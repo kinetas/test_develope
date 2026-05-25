@@ -1,0 +1,66 @@
+TASK-009 완료 보고서
+작성자: Backend AI
+날짜: 2026-05-24
+
+=== 작업 요약 ===
+ADMIN 권한 전용 관리자 페이지를 구현했습니다.
+
+=== 생성 / 수정 파일 목록 ===
+
+[수정]
+1. src/main/java/com/trpg/model/User.java
+   - `private boolean enabled = true;` 필드 추가 (@Column nullable=false)
+
+2. src/main/java/com/trpg/repository/UserRepository.java
+   - `findAllByOrderByCreatedAtDesc(Pageable pageable)` 쿼리 메서드 추가
+   - import: org.springframework.data.domain.Pageable
+
+3. src/main/java/com/trpg/config/SecurityConfig.java
+   - @EnableMethodSecurity 어노테이션 추가 (@PreAuthorize 지원)
+   - authorizeHttpRequests에 `/api/admin/**`, `/admin/**` → hasRole("ADMIN") 규칙 추가
+
+[생성]
+4. src/main/java/com/trpg/dto/admin/UserSummaryDTO.java
+   - 필드: id, username, email, role, enabled, createdAt
+   - Lombok: @Data, @Builder, @NoArgsConstructor, @AllArgsConstructor
+
+5. src/main/java/com/trpg/service/AdminService.java
+   - getAllUsers(): List<UserSummaryDTO> — 전체 유저 목록
+   - banUser(Long userId): enabled=false 설정 후 저장
+   - unbanUser(Long userId): enabled=true 설정 후 저장
+   - deleteUser(Long userId): 영구 삭제
+   - getUserCount(): long — JPA count()
+   - getRecentUsers(int limit): 최근 가입순 상위 N명
+
+6. src/main/java/com/trpg/controller/AdminController.java
+   - View: GET /admin/dashboard → admin/dashboard.html
+   - View: GET /admin/users → admin/users.html
+   - REST: GET /api/admin/users
+   - REST: PUT /api/admin/users/{id}/ban
+   - REST: PUT /api/admin/users/{id}/unban
+   - REST: DELETE /api/admin/users/{id}
+   - REST: GET /api/admin/stats
+   - 모든 핸들러에 @PreAuthorize("hasRole('ADMIN')") 적용
+
+7. src/main/resources/templates/admin/dashboard.html
+   - layout.html 프래그먼트 상속
+   - 통계 카드 3개: TOTAL USERS, RECENT SIGN-UPS, SYSTEM STATUS
+   - 최근 가입 유저 테이블
+   - 빠른 링크 (USER MANAGEMENT, RAW STATS)
+   - 사이버펑크 클래스 적용: stat-card, cyberpunk-panel, badge
+
+8. src/main/resources/templates/admin/users.html
+   - layout.html 프래그먼트 상속
+   - 검색 입력창 (클라이언트사이드 필터링)
+   - 전체 유저 테이블 (id, username, email, role, status, joined, actions)
+   - 정지 / 해제 / 삭제 버튼 (fetch API로 REST 호출 후 reload)
+   - 사이버펑크 클래스 적용: cyberpunk-panel, data-table, badge, btn
+
+=== 설계 결정 사항 ===
+- @PreAuthorize + SecurityConfig 이중 보호: URL 레벨(SecurityConfig)과 메서드 레벨(@PreAuthorize) 모두 ADMIN 검증
+- enabled 기본값 true: 기존 사용자 마이그레이션 시 기본 활성 상태 유지
+- UserRepository에 Pageable 기반 쿼리 추가: getRecentUsers()의 limit 파라미터를 DB 쿼리 수준에서 제한
+- 템플릿 사이드바: layout.html의 sidebar 슬롯을 활용하여 어드민 전용 네비게이션 구성
+
+=== 상태 ===
+완료 (컴파일 필요, 런타임 테스트 미실시)

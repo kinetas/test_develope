@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="ko"
+      xmlns:th="http://www.thymeleaf.org"
+      th:fragment="layout(title, sidebar, content)">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0a0a0f" />
+  <meta name="description" th:content="${pageDescription} ?: 'Context TRPG — 텍스트 기반 사이버펑크 롤플레잉 게임'" />
+
+  <!-- Dynamic page title -->
+  <title th:text="${title} + ' | CONTEXT TRPG'">CONTEXT TRPG</title>
+
+  <!-- Google Fonts: Cyberpunk display + mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Share+Tech+Mono&display=swap"
+        rel="stylesheet" />
+
+  <!-- Main stylesheet (imports all partials) -->
+  <link rel="stylesheet" th:href="@{/css/main.css}" />
+
+  <!-- Per-page extra styles slot -->
+  <th:block th:replace="${pageStyles} ?: ~{}" />
+</head>
+
+<body>
+
+  <!-- ── Scan-line overlay (subtle CRT effect) ── -->
+  <div class="scanlines" aria-hidden="true"></div>
+
+  <!-- ════════════════════════════════════════════
+       APP SHELL
+       ════════════════════════════════════════════ -->
+  <div class="app-shell" th:classappend="${sidebar == null} ? 'app-shell--no-sidebar' : ''">
+
+    <!-- ── NAVIGATION BAR ── -->
+    <nav class="navbar" role="navigation" aria-label="주 내비게이션">
+
+      <!-- Brand -->
+      <a class="navbar__brand" th:href="@{/}" aria-label="홈으로">
+        <!-- SVG logo mark -->
+        <svg class="navbar__logo" viewBox="0 0 32 32" fill="none"
+             xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <polygon points="16,2 30,10 30,22 16,30 2,22 2,10"
+                   stroke="currentColor" stroke-width="1.5"
+                   fill="none" style="color: #00f5ff;" />
+          <polygon points="16,8 24,12 24,20 16,24 8,20 8,12"
+                   stroke="currentColor" stroke-width="1"
+                   fill="rgba(0,245,255,0.08)" style="color: #00b8cc;" />
+          <circle cx="16" cy="16" r="3"
+                  fill="#00f5ff"
+                  style="filter: drop-shadow(0 0 4px #00f5ff)" />
+        </svg>
+        <span class="navbar__title glitch-on-hover" data-text="CONTEXT TRPG">
+          CONTEXT TRPG
+        </span>
+      </a>
+
+      <!-- Main navigation links -->
+      <ul class="navbar__nav" role="list">
+        <li>
+          <a class="navbar__link"
+             th:classappend="${activePage == 'home'} ? 'navbar__link--active'"
+             th:href="@{/}">
+            HOME
+          </a>
+        </li>
+        <li>
+          <a class="navbar__link"
+             th:classappend="${activePage == 'game'} ? 'navbar__link--active'"
+             th:href="@{/game}">
+            PLAY
+          </a>
+        </li>
+        <li>
+          <a class="navbar__link"
+             th:classappend="${activePage == 'story'} ? 'navbar__link--active'"
+             th:href="@{/story}">
+            STORY
+          </a>
+        </li>
+        <li>
+          <a class="navbar__link"
+             th:classappend="${activePage == 'character'} ? 'navbar__link--active'"
+             th:href="@{/character}">
+            CHARACTER
+          </a>
+        </li>
+        <li>
+          <a class="navbar__link"
+             th:classappend="${activePage == 'archive'} ? 'navbar__link--active'"
+             th:href="@{/archive}">
+            ARCHIVE
+          </a>
+        </li>
+      </ul>
+
+      <!-- Action area (user info, settings …) -->
+      <div class="navbar__actions">
+        <!-- System status indicator -->
+        <div class="flex flex--center flex--gap-sm" aria-label="시스템 상태">
+          <span style="width:8px;height:8px;border-radius:50%;background:var(--neon-green);
+                       box-shadow:0 0 6px var(--neon-green);flex-shrink:0;"
+                aria-hidden="true"></span>
+          <span class="text-xs text-muted ls-wider" style="text-transform:uppercase">ONLINE</span>
+        </div>
+
+        <div class="navbar__divider" aria-hidden="true"></div>
+
+        <!-- Auth block (conditionally shown by controller) -->
+        <div th:if="${currentUser != null}" class="flex flex--center flex--gap-sm">
+          <span class="text-xs text-secondary ls-wide"
+                th:text="${currentUser.username}">RUNNER_00</span>
+          <a class="btn btn--ghost btn--sm" th:href="@{/logout}">LOGOUT</a>
+        </div>
+        <div th:if="${currentUser == null}" class="flex flex--center flex--gap-sm">
+          <a class="btn btn--ghost btn--sm" th:href="@{/login}">LOGIN</a>
+          <a class="btn btn--primary btn--sm" th:href="@{/register}">JOIN</a>
+        </div>
+      </div>
+
+    </nav>
+    <!-- / .navbar -->
+
+    <!-- ── SIDEBAR (optional, injected via fragment) ── -->
+    <aside th:if="${sidebar != null}"
+           class="sidebar"
+           id="sidebar"
+           role="complementary"
+           aria-label="사이드바 내비게이션">
+      <th:block th:replace="${sidebar}" />
+    </aside>
+
+    <!-- ── MAIN CONTENT ── -->
+    <main class="main-content"
+          id="main-content"
+          role="main"
+          tabindex="-1">
+
+      <!-- Page-level flash messages -->
+      <div th:if="${flashSuccess}" class="alert alert--success mb-6 anim-slide-down"
+           role="alert"
+           th:text="${flashSuccess}"></div>
+      <div th:if="${flashError}" class="alert alert--error mb-6 anim-slide-down"
+           role="alert"
+           th:text="${flashError}"></div>
+
+      <!-- Actual page content injected here -->
+      <th:block th:replace="${content}" />
+
+    </main>
+    <!-- / .main-content -->
+
+  </div>
+  <!-- / .app-shell -->
+
+  <!-- ── Per-page scripts slot ── -->
+  <th:block th:replace="${pageScripts} ?: ~{}" />
+
+</body>
+</html>

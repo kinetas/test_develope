@@ -1,0 +1,79 @@
+TASK-002 완료 보고
+담당: Backend AI
+날짜: 2026-05-24
+
+[생성된 파일 목록]
+1. src/main/java/com/trpg/model/UserRole.java
+   - USER, ADMIN enum 값 정의
+
+2. src/main/java/com/trpg/model/User.java
+   - @Entity, @Data, @Builder, @NoArgsConstructor, @AllArgsConstructor
+   - 필드: id(Long/PK), username(unique), email(unique), password(BCrypt), role(UserRole), createdAt(LocalDateTime)
+   - @PrePersist로 createdAt 자동 설정
+
+3. src/main/java/com/trpg/repository/UserRepository.java
+   - JpaRepository<User, Long> 확장
+   - findByUsername(String): Optional<User>
+   - findByEmail(String): Optional<User>
+   - existsByUsername(String): boolean
+   - existsByEmail(String): boolean
+
+4. src/main/java/com/trpg/util/JwtUtil.java
+   - jjwt 0.12.5 API (Jwts.builder(), .parseSignedClaims(), Keys.hmacShaKeyFor())
+   - generateToken(username, role): String
+   - validateToken(token): boolean
+   - getUsernameFromToken(token): String
+   - getRoleFromToken(token): String
+   - application.properties의 jwt.secret, jwt.expiration-ms 사용
+
+5. src/main/java/com/trpg/config/JwtAuthenticationFilter.java
+   - OncePerRequestFilter 확장
+   - Authorization: Bearer <token> 헤더에서 토큰 추출
+   - 토큰 검증 후 SecurityContext에 UsernamePasswordAuthenticationToken 설정
+   - ROLE_ 접두사로 권한(GrantedAuthority) 등록
+
+6. src/main/java/com/trpg/config/SecurityConfig.java
+   - @Configuration, @EnableWebSecurity
+   - CSRF 비활성화 (Stateless JWT API)
+   - SessionCreationPolicy.STATELESS
+   - 인증 불필요 경로: /api/auth/**, /static/**, /css/**, /js/**, /h2-console/**
+   - 나머지 모든 경로: authenticated()
+   - BCryptPasswordEncoder Bean 등록
+   - JwtAuthenticationFilter를 UsernamePasswordAuthenticationFilter 앞에 등록
+
+7. src/main/java/com/trpg/dto/auth/LoginRequest.java
+   - username, password (@NotBlank 검증)
+
+8. src/main/java/com/trpg/dto/auth/LoginResponse.java
+   - token, username, role (@Builder)
+
+9. src/main/java/com/trpg/dto/auth/RegisterRequest.java
+   - username, email, password (@NotBlank, @Email, @Size 검증)
+
+10. src/main/java/com/trpg/service/AuthService.java
+    - register(RegisterRequest): 중복 검사 후 BCrypt 해시, USER 역할로 저장
+    - login(LoginRequest): 인증 후 JWT 토큰 포함한 LoginResponse 반환
+
+11. src/main/java/com/trpg/controller/AuthController.java
+    - POST /api/auth/register → 201 Created (성공) / 409 Conflict (중복)
+    - POST /api/auth/login   → 200 OK + LoginResponse (성공) / 401 Unauthorized (실패)
+
+[API 엔드포인트]
+POST /api/auth/register
+  Request Body: { "username": "string", "email": "string", "password": "string" }
+  Response 201: { "message": "User registered successfully", "username": "string", "id": number }
+  Response 409: { "error": "Username/Email already taken" }
+
+POST /api/auth/login
+  Request Body: { "username": "string", "password": "string" }
+  Response 200: { "token": "JWT_STRING", "username": "string", "role": "USER|ADMIN" }
+  Response 401: { "error": "Invalid username or password" }
+
+[JWT 구성]
+- 알고리즘: HMAC-SHA (키 길이에 따라 HS256/HS384/HS512 자동 선택)
+- Payload claims: sub(username), role, iat, exp
+- 만료 시간: application.properties jwt.expiration-ms (기본 3600000ms = 1시간)
+- 시크릿 키: application.properties jwt.secret (최소 32자 권장)
+
+[다음 단계]
+TASK-004, TASK-005, TASK-006, TASK-008, TASK-009 진행 가능

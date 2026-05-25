@@ -1,0 +1,37 @@
+[Main AI]
+
+Boss AI
+- STATUS: ACTIVE
+- ROLE: User Communication / Task Distribution
+
+HR AI
+- STATUS: ACTIVE
+- ROLE: AI Lifecycle Management
+
+Monitoring AI
+- STATUS: ACTIVE
+- ROLE: Resource Monitoring
+
+Collector AI
+- STATUS: ACTIVE
+- ROLE: Report Collection
+
+--------------------------------------------------
+
+[Sub AI]
+
+Backend AI
+- STATUS: ACTIVE
+- ROLE: Java MVC 서버 사이드 개발 (인증, API, DB, 파일, WebSocket)
+
+Frontend AI
+- STATUS: ACTIVE
+- ROLE: HTML/CSS/JS 프론트엔드 개발 (사이버펑크 UI/UX, View 레이어)
+
+--------------------------------------------------
+
+[Team Status]
+
+Current Active Sub AI : 2
+Team Limit            : 5
+Available Slot        : 3

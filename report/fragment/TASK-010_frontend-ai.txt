@@ -1,0 +1,95 @@
+TASK-010 완료 보고
+담당: Frontend AI
+날짜: 2026-05-24
+
+[생성된 파일 목록]
+
+CSS 파일 (static/css/)
+  - variables.css   : 디자인 토큰 (색상, 폰트, 간격, 그림자, 트랜지션, Z-인덱스)
+  - reset.css       : CSS 리셋 및 정규화 (스크롤바, 선택 영역 포함)
+  - layout.css      : 앱 셸 그리드, 네비게이션 바, 사이드바, 메인 콘텐츠, 반응형
+  - components.css  : 버튼, 입력 폼, 카드/패널, 테이블, 모달, 배지, 스피너, 진행바, 알림
+  - animations.css  : 네온 글로우 펄스, 글리치, 슬라이드인, 스캔라인, 타이프라이터 커서
+  - main.css        : 위 5개 파일 @import + 전역 유틸리티 클래스
+
+템플릿 파일 (resources/templates/)
+  - layout.html     : Thymeleaf 기본 레이아웃 (th:fragment, 네비게이션 바, 사이드바 슬롯, 콘텐츠 슬롯)
+
+[디자인 시스템 요약]
+
+폰트
+  - 디스플레이/타이틀: Orbitron (Google Fonts, 미래지향적 기하학 산세리프)
+  - UI/본문:          Share Tech Mono (Google Fonts, 터미널 감성 모노스페이스)
+  - 폴백:             'Courier New', 'Lucida Console', monospace
+
+레이아웃 구조
+  - CSS Grid 기반 3-영역 앱 셸: navbar(전체 폭) / sidebar(260px) / main(나머지)
+  - sticky 네비게이션 바 (height: 60px)
+  - sticky 사이드바 (sidebar-width: 260px, collapsed: 56px)
+  - 반응형 중단점: 1200px / 992px / 768px / 480px
+
+버튼 변형
+  - btn--primary (청록 아웃라인 + hover 글로우)
+  - btn--secondary (보라 아웃라인)
+  - btn--danger (핑크 아웃라인)
+  - btn--ghost (기본 아웃라인)
+  - btn--solid (청록 채움)
+  - 크기: btn--sm / btn--lg / btn--icon
+
+애니메이션
+  - glowPulseCyan / glowPulsePurple / glowPulsePink (2s 무한 반복)
+  - glitchShift + glitch (텍스트 글리치, hover 전용 변형 포함)
+  - slideInLeft / Right / Down / Up, fadeIn, scaleIn (진입 트랜지션)
+  - scanLine (CRT 스캔라인 오버레이)
+  - cursorBlink (타이프라이터 커서)
+  - prefers-reduced-motion 지원
+
+[컬러 팔레트]
+
+배경
+  --bg-void:    #050508  (가장 어두운, 네비게이션 바/사이드바)
+  --bg-deep:    #0a0a0f  (메인 배경)
+  --bg-base:    #111118
+  --bg-surface: #1a1a24  (카드/패널)
+  --bg-elevated:#22222f  (입력 포커스, 드롭다운)
+
+네온 포인트
+  --neon-cyan:   #00f5ff  (주 포인트 — 링크, 활성 상태, 기본 글로우)
+  --neon-purple: #bf00ff  (보조 포인트 — 뱃지, 보조 버튼)
+  --neon-pink:   #ff006e  (위험/강조 — 에러, 삭제, 닫기)
+  --neon-green:  #00ff88  (성공, 상태 ON)
+  --neon-yellow: #ffe600  (경고)
+
+텍스트
+  --text-primary:   #e0e0e0
+  --text-secondary: #a0a0b8
+  --text-muted:     #606078
+  --text-white:     #ffffff
+
+[다음 단계 권장사항]
+
+각 기능 View 작업 시 layout.html을 기반으로 확장:
+
+  th:replace="~{layout :: layout(
+      title     = '페이지명',
+      sidebar   = ~{fragments/sidebar :: gameSidebar},
+      content   = ~{:: #page-content}
+  )}"
+
+권장 작업 순서:
+  1. 홈/랜딩 뷰 (index.html) — layout.html 상속, 사이드바 없음
+  2. 게임 플레이 뷰 (game.html) — 사이드바(인벤토리/퀘스트), 채팅 패널
+  3. 캐릭터 뷰 (character.html) — stat-card 컴포넌트 활용
+  4. 스토리 아카이브 뷰 (archive.html) — table 컴포넌트 활용
+  5. 로그인/회원가입 뷰 — modal 또는 전용 페이지, 사이드바 없음
+
+fragment 분리 권장:
+  - templates/fragments/sidebar.html  — 사이드바 메뉴 fragment
+  - templates/fragments/navbar.html   — 네비게이션 분리 (선택)
+  - templates/fragments/modals.html   — 공통 모달 모음
+
+JavaScript 다음 작업 시 연동 포인트:
+  - .sidebar--mobile-open 토글 (모바일 햄버거 메뉴)
+  - .modal-backdrop 동적 생성/제거
+  - .loading-overlay 표시/숨김
+  - data-text 속성 기반 glitch-text 자동 세팅 스크립트

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ko"
+      xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: layout(
+          title     = '관리자 대시보드',
+          sidebar   = ~{::aside},
+          content   = ~{::section}
+      )}">
+
+<!-- ── Sidebar ── -->
+<aside>
+  <div class="sidebar__section">
+    <h3 class="sidebar__heading ls-wider text-xs text-muted">ADMIN MENU</h3>
+    <ul class="sidebar__nav" role="list">
+      <li>
+        <a class="sidebar__link sidebar__link--active"
+           th:href="@{/admin/dashboard}">
+          <span class="sidebar__icon" aria-hidden="true">◈</span>
+          DASHBOARD
+        </a>
+      </li>
+      <li>
+        <a class="sidebar__link" th:href="@{/admin/users}">
+          <span class="sidebar__icon" aria-hidden="true">◉</span>
+          USER MGMT
+        </a>
+      </li>
+    </ul>
+  </div>
+</aside>
+
+<!-- ── Main content ── -->
+<section>
+
+  <!-- Page header -->
+  <div class="page-header mb-8">
+    <h1 class="text-xl font-bold text-primary ls-wide glitch-on-hover"
+        data-text="ADMIN DASHBOARD">
+      ADMIN DASHBOARD
+    </h1>
+    <p class="text-sm text-muted mt-2">시스템 현황 및 서비스 통계</p>
+  </div>
+
+  <!-- ── Stat cards ── -->
+  <div class="grid grid--cols-3 gap-6 mb-10">
+
+    <!-- Total users -->
+    <div class="stat-card cyberpunk-panel">
+      <div class="stat-card__label text-xs text-muted ls-wider">TOTAL USERS</div>
+      <div class="stat-card__value text-primary"
+           th:text="${userCount}">0</div>
+      <div class="stat-card__sub text-xs text-muted">등록된 전체 유저</div>
+    </div>
+
+    <!-- Recent sign-ups (last 7 days placeholder — real query could use a service method) -->
+    <div class="stat-card cyberpunk-panel">
+      <div class="stat-card__label text-xs text-muted ls-wider">RECENT SIGN-UPS</div>
+      <div class="stat-card__value text-secondary"
+           th:text="${recentUsers != null ? recentUsers.size() : 0}">0</div>
+      <div class="stat-card__sub text-xs text-muted">최근 10명 기준</div>
+    </div>
+
+    <!-- System status -->
+    <div class="stat-card cyberpunk-panel">
+      <div class="stat-card__label text-xs text-muted ls-wider">SYSTEM STATUS</div>
+      <div class="stat-card__value" style="color: var(--neon-green);">ONLINE</div>
+      <div class="stat-card__sub text-xs text-muted">서버 정상 운영 중</div>
+    </div>
+
+  </div>
+
+  <!-- ── Recent users table ── -->
+  <div class="cyberpunk-panel mb-10">
+    <div class="cyberpunk-panel__header">
+      <h2 class="text-sm font-bold ls-wider text-secondary">RECENT USERS</h2>
+    </div>
+    <div class="cyberpunk-panel__body">
+      <table class="data-table" aria-label="최근 가입 유저 목록">
+        <thead>
+          <tr>
+            <th class="text-xs ls-wider">ID</th>
+            <th class="text-xs ls-wider">USERNAME</th>
+            <th class="text-xs ls-wider">EMAIL</th>
+            <th class="text-xs ls-wider">ROLE</th>
+            <th class="text-xs ls-wider">STATUS</th>
+            <th class="text-xs ls-wider">JOINED</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr th:each="user : ${recentUsers}">
+            <td class="text-xs text-muted" th:text="${user.id}">1</td>
+            <td class="text-sm text-primary" th:text="${user.username}">RUNNER_00</td>
+            <td class="text-xs text-muted" th:text="${user.email}">—</td>
+            <td>
+              <span class="badge"
+                    th:classappend="${user.role.name() == 'ADMIN'} ? 'badge--admin' : 'badge--user'"
+                    th:text="${user.role}">USER</span>
+            </td>
+            <td>
+              <span class="badge"
+                    th:classappend="${user.enabled} ? 'badge--active' : 'badge--banned'"
+                    th:text="${user.enabled} ? 'ACTIVE' : 'BANNED'">ACTIVE</span>
+            </td>
+            <td class="text-xs text-muted"
+                th:text="${#temporals.format(user.createdAt, 'yyyy-MM-dd')}">—</td>
+          </tr>
+          <tr th:if="${recentUsers == null or recentUsers.isEmpty()}">
+            <td colspan="6" class="text-center text-muted text-xs">등록된 유저가 없습니다.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── Quick links ── -->
+  <div class="cyberpunk-panel">
+    <div class="cyberpunk-panel__header">
+      <h2 class="text-sm font-bold ls-wider text-secondary">QUICK LINKS</h2>
+    </div>
+    <div class="cyberpunk-panel__body flex flex--gap-md">
+      <a class="btn btn--primary" th:href="@{/admin/users}">
+        USER MANAGEMENT
+      </a>
+      <a class="btn btn--ghost" th:href="@{/api/admin/stats}">
+        RAW STATS (JSON)
+      </a>
+    </div>
+  </div>
+
+</section>
+</html>

@@ -1,0 +1,85 @@
+TASK-005 완료 보고
+담당: Backend AI
+날짜: 2026-05-24
+
+[생성된 파일 목록]
+
+1. model/GameMap.java
+   - 필드: id(Long), title(String), owner(ManyToOne User), mapData(String @Lob),
+           backgroundImage(ManyToOne UploadedFile, nullable),
+           width(int), height(int), isPublic(boolean),
+           createdAt(LocalDateTime), updatedAt(LocalDateTime)
+   - @PrePersist: createdAt/updatedAt 자동 설정
+   - @PreUpdate: updatedAt 갱신
+
+2. repository/GameMapRepository.java
+   - JpaRepository<GameMap, Long> 확장
+   - findByOwner(User): 소유자 맵 전체 조회
+   - findByOwnerAndId(User, Long): 소유자 + ID 조합 조회 (권한 체크용)
+   - findByIsPublicTrue(): 공개 맵 전체 조회
+
+3. dto/map/GameMapDTO.java
+   - 전체 맵 데이터 응답용
+   - 필드: id, title, mapData, backgroundImageId, backgroundImageName,
+           width, height, isPublic, ownerUsername, createdAt, updatedAt
+
+4. dto/map/GameMapRequest.java
+   - 생성/수정 요청 DTO
+   - 필드: title(@NotBlank, @Size max=100), mapData, backgroundImageId,
+           width(@Min 1), height(@Min 1), isPublic
+   - Jakarta Bean Validation 적용
+
+5. dto/map/GameMapSummary.java
+   - 목록 조회용 요약 DTO
+   - 필드: id, title, width, height, ownerUsername, isPublic, updatedAt
+
+6. service/GameMapService.java
+   - create(GameMapRequest, User): 새 맵 생성 후 GameMapDTO 반환
+   - update(Long, GameMapRequest, User): 소유자 검증 후 수정, GameMapDTO 반환
+   - delete(Long, User): 소유자 검증 후 삭제
+   - getById(Long): 단건 조회
+   - getMyMaps(User): 소유자 맵 목록 (List<GameMapSummary>)
+   - getPublicMaps(): 공개 맵 목록 (List<GameMapSummary>)
+   - toDTO / toSummary private 변환 메서드 포함
+
+7. controller/GameMapController.java
+   - @RestController, /api/maps 매핑
+   - @AuthenticationPrincipal UserDetails로 인증 사용자 주입
+   - resolveUser() 헬퍼로 User 엔티티 조회
+
+8. resources/templates/map-editor.html
+   - Thymeleaf layout :: layout 프래그먼트 사용
+   - Canvas 기반 그리드 에디터 (id="map-canvas")
+   - 사이버펑크 스타일 컨트롤 패널 (맵 이름, 크기, 도구, 색상, 배경 이미지, 공개 여부)
+   - 도구: DRAW / ERASE / PAN (줌 + 패닝 지원)
+   - 배경 이미지 업로드 — TASK-003 /api/files/upload API 연동 (JWT 포함)
+   - 저장 버튼 — POST /api/maps (신규) / PUT /api/maps/{id} (수정) 자동 분기
+   - 완전한 Canvas 그리드 렌더링 JavaScript 포함
+
+9. resources/templates/map-list.html
+   - 내 맵 / 공개 맵 탭 전환 UI
+   - 서버사이드 Thymeleaf 렌더링 (myMaps 모델 속성 활용)
+   - 공개 맵 탭: /api/maps/public API fetch로 동적 로드
+   - 맵 카드 그리드 (사이버펑크 panel--dark 스타일)
+   - 편집/삭제 버튼, 새 맵 만들기 버튼 포함
+   - deleteMap() JS 함수: DELETE /api/maps/{id} 호출
+
+[API 엔드포인트]
+POST   /api/maps           맵 생성 (JWT 필수)
+GET    /api/maps/my        내 맵 목록 (JWT 필수)
+GET    /api/maps/public    공개 맵 목록 (인증 불필요)
+GET    /api/maps/{id}      맵 단건 조회
+PUT    /api/maps/{id}      맵 수정 (소유자만, JWT 필수)
+DELETE /api/maps/{id}      맵 삭제 (소유자만, JWT 필수)
+
+[보안 처리]
+- update / delete: findByOwnerAndId()로 소유자 검증, 권한 없으면 403 반환
+- 모든 쓰기 엔드포인트는 JWT 인증 필요 (SecurityConfig 기존 설정 활용)
+
+[선행 작업 연동]
+- TASK-002 (JWT): @AuthenticationPrincipal UserDetails, UserRepository 활용
+- TASK-003 (파일 업로드): UploadedFile ManyToOne 연결, /api/files/upload API 연동
+
+[다음 단계]
+TASK-007 (BGM), TASK-008 (게임 세션) 등에서 GameMap 엔티티 참조 가능
+뷰 라우팅을 위해 /maps/editor, /maps 경로 처리하는 MVC 컨트롤러 추가 권장

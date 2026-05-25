@@ -1,0 +1,100 @@
+TASK-001 완료 보고
+담당: Backend AI
+날짜: 2026-05-24
+
+================================================================================
+[생성된 파일 목록]
+================================================================================
+
+[디렉토리 구조]
+E:\ttttt\develope\webGame-contextTRPG\
+├── pom.xml
+└── src\
+    └── main\
+        ├── java\
+        │   └── com\
+        │       └── trpg\
+        │           ├── TrpgApplication.java          (메인 진입점)
+        │           ├── controller\
+        │           │   └── .gitkeep
+        │           ├── model\
+        │           │   └── .gitkeep
+        │           ├── service\
+        │           │   └── .gitkeep
+        │           ├── repository\
+        │           │   └── .gitkeep
+        │           ├── config\
+        │           │   └── .gitkeep
+        │           ├── dto\
+        │           │   └── .gitkeep
+        │           └── util\
+        │               └── .gitkeep
+        ├── resources\
+        │   ├── application.properties                (서버·DB·JWT·WebSocket 설정)
+        │   ├── static\
+        │   │   ├── css\  (.gitkeep)
+        │   │   ├── js\   (.gitkeep)
+        │   │   └── images\ (.gitkeep)
+        │   └── templates\ (.gitkeep)
+        └── webapp\
+            └── .gitkeep
+
+[주요 설정 파일]
+- pom.xml                  : Spring Boot 3.2.5, Java 17, 전체 의존성 정의
+- TrpgApplication.java     : @SpringBootApplication 메인 클래스
+- application.properties   : 서버(8080), H2 콘솔, JWT secret placeholder, JPA, Thymeleaf
+
+================================================================================
+[구조 설명]
+================================================================================
+
+1. 아키텍처 레이어 (MVC + Service Layer)
+   - controller/  : HTTP 요청 처리, @RestController / @Controller 위치
+   - service/     : 비즈니스 로직, @Service 위치
+   - repository/  : DB 접근, Spring Data JPA Repository 인터페이스 위치
+   - model/       : JPA 엔티티 (@Entity) 위치
+   - dto/         : 요청/응답 DTO 클래스 (API 계약 분리)
+   - config/      : SecurityConfig, WebSocketConfig, JwtConfig 등 설정 클래스
+   - util/        : JwtUtil, ResponseUtil 등 공통 유틸리티
+
+2. 의존성 구성
+   - spring-boot-starter-web           : MVC, REST API
+   - spring-boot-starter-security      : 인증/인가 프레임워크
+   - spring-boot-starter-websocket     : STOMP 기반 실시간 통신
+   - spring-boot-starter-data-jpa      : ORM (Hibernate)
+   - spring-boot-starter-thymeleaf     : 서버 사이드 HTML 렌더링
+   - thymeleaf-extras-springsecurity6  : Thymeleaf Security Dialect
+   - jjwt-api / jjwt-impl / jjwt-jackson (0.12.5) : JWT 발급·검증
+   - lombok                            : Boilerplate 제거
+   - h2                                : 개발용 인메모리 DB
+   - spring-boot-starter-validation    : Bean Validation
+
+3. 보안 고려사항
+   - application.properties의 jwt.secret는 플레이스홀더로 처리
+   - 프로덕션 배포 전 반드시 강력한 시크릿(32자 이상)으로 교체 및 환경변수화 필요
+   - H2 콘솔은 web-allow-others=false (로컬만 접근 허용)
+
+================================================================================
+[다음 단계 권장사항]
+================================================================================
+
+TASK-002 (JWT 인증), TASK-003 (파일 업로드) 병렬 진행 가능
+
+- TASK-002: JWT 인증 구현
+    - config/SecurityConfig.java         : HTTP Security 설정, CSRF 비활성화 (API 모드)
+    - config/JwtConfig.java              : JWT Bean 등록
+    - util/JwtUtil.java                  : 토큰 생성·파싱·검증 로직
+    - model/User.java                    : 사용자 엔티티 (username, password, roles)
+    - repository/UserRepository.java     : findByUsername 메서드
+    - service/UserDetailsServiceImpl.java: Spring Security UserDetailsService 구현
+    - controller/AuthController.java     : /api/auth/login, /api/auth/register 엔드포인트
+    - dto/LoginRequest.java / JwtResponse.java
+
+- TASK-003: 파일 업로드 (캐릭터 이미지 등)
+    - controller/FileUploadController.java
+    - service/FileStorageService.java
+    - application.properties에 file.upload-dir 경로 추가
+
+- TASK-004 (선행 완료 후): TRPG 게임 도메인 모델 설계
+    - model/Campaign.java, Character.java, Session.java, Message.java
+    - WebSocket 게임 세션 핸들러 구현

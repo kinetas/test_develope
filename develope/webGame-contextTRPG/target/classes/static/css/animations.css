@@ -1,0 +1,299 @@
+/* =============================================================
+   ANIMATIONS — animations.css
+   Context TRPG Web Game
+   ============================================================= */
+
+/* =====================================================
+   NEON GLOW PULSE
+   ===================================================== */
+
+@keyframes glowPulseCyan {
+  0%, 100% {
+    box-shadow: 0 0 4px var(--neon-cyan),
+                0 0 10px rgba(0, 245, 255, 0.3),
+                0 0 20px rgba(0, 245, 255, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 8px var(--neon-cyan),
+                0 0 20px rgba(0, 245, 255, 0.6),
+                0 0 40px rgba(0, 245, 255, 0.25);
+  }
+}
+
+@keyframes glowPulsePurple {
+  0%, 100% {
+    box-shadow: 0 0 4px var(--neon-purple),
+                0 0 10px rgba(191, 0, 255, 0.3),
+                0 0 20px rgba(191, 0, 255, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 8px var(--neon-purple),
+                0 0 20px rgba(191, 0, 255, 0.6),
+                0 0 40px rgba(191, 0, 255, 0.25);
+  }
+}
+
+@keyframes glowPulsePink {
+  0%, 100% {
+    box-shadow: 0 0 4px var(--neon-pink),
+                0 0 10px rgba(255, 0, 110, 0.3),
+                0 0 20px rgba(255, 0, 110, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 8px var(--neon-pink),
+                0 0 20px rgba(255, 0, 110, 0.6),
+                0 0 40px rgba(255, 0, 110, 0.25);
+  }
+}
+
+@keyframes textGlowPulse {
+  0%, 100% {
+    text-shadow: 0 0 4px currentColor,
+                 0 0 10px rgba(0, 245, 255, 0.3);
+  }
+  50% {
+    text-shadow: 0 0 8px currentColor,
+                 0 0 20px rgba(0, 245, 255, 0.7),
+                 0 0 40px rgba(0, 245, 255, 0.3);
+  }
+}
+
+/* Utility classes */
+.anim-glow-cyan   { animation: glowPulseCyan   2s ease-in-out infinite; }
+.anim-glow-purple { animation: glowPulsePurple 2s ease-in-out infinite; }
+.anim-glow-pink   { animation: glowPulsePink   2s ease-in-out infinite; }
+.anim-text-glow   { animation: textGlowPulse   2s ease-in-out infinite; }
+
+/* =====================================================
+   GLITCH EFFECT
+   ===================================================== */
+
+@keyframes glitch {
+  0%   { clip-path: inset(0 0 98% 0); transform: translate(-2px, 0); }
+  5%   { clip-path: inset(30% 0 60% 0); transform: translate(2px, 0); }
+  10%  { clip-path: inset(60% 0 20% 0); transform: translate(-2px, 0); }
+  15%  { clip-path: inset(80% 0 5% 0);  transform: translate(2px, 0); }
+  20%  { clip-path: inset(10% 0 85% 0); transform: translate(0); }
+  100% { clip-path: inset(0 0 98% 0); transform: translate(0); }
+}
+
+@keyframes glitchShift {
+  0%, 95%, 100% { transform: none; }
+  96%  { transform: translate(-3px, 1px) skewX(-2deg); filter: hue-rotate(90deg); }
+  97%  { transform: translate(3px, -1px) skewX(2deg);  filter: hue-rotate(180deg); }
+  98%  { transform: translate(-1px, 2px); filter: hue-rotate(270deg); }
+  99%  { transform: translate(1px, -2px) skewX(-1deg); }
+}
+
+.glitch-text {
+  position: relative;
+  display: inline-block;
+  animation: glitchShift 4s steps(1) infinite;
+}
+
+.glitch-text::before,
+.glitch-text::after {
+  content: attr(data-text);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.glitch-text::before {
+  color: var(--neon-cyan);
+  animation: glitch 3s steps(1) infinite;
+  mix-blend-mode: screen;
+}
+
+.glitch-text::after {
+  color: var(--neon-pink);
+  animation: glitch 3s steps(1) infinite reverse;
+  animation-delay: 0.1s;
+  mix-blend-mode: screen;
+}
+
+/* Hover-only glitch */
+.glitch-on-hover::before,
+.glitch-on-hover::after {
+  animation: none;
+}
+.glitch-on-hover:hover {
+  animation: glitchShift 0.4s steps(1) 1;
+}
+.glitch-on-hover:hover::before {
+  animation: glitch 0.4s steps(1) 1;
+}
+.glitch-on-hover:hover::after {
+  animation: glitch 0.4s steps(1) 1 reverse;
+}
+
+/* =====================================================
+   SLIDE-IN TRANSITIONS
+   ===================================================== */
+
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideInDown {
+  from { opacity: 0; transform: translateY(-16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* Utility classes */
+.anim-slide-left  { animation: slideInLeft  var(--transition-slow) ease both; }
+.anim-slide-right { animation: slideInRight var(--transition-slow) ease both; }
+.anim-slide-down  { animation: slideInDown  var(--transition-slow) ease both; }
+.anim-slide-up    { animation: slideInUp    var(--transition-slow) ease both; }
+.anim-fade-in     { animation: fadeIn       var(--transition-slow) ease both; }
+.anim-scale-in    { animation: scaleIn      var(--transition-slow) ease both; }
+
+/* Stagger delays */
+.anim-delay-1 { animation-delay: 0.1s; }
+.anim-delay-2 { animation-delay: 0.2s; }
+.anim-delay-3 { animation-delay: 0.3s; }
+.anim-delay-4 { animation-delay: 0.4s; }
+.anim-delay-5 { animation-delay: 0.5s; }
+
+/* =====================================================
+   SCAN LINE OVERLAY (page-level effect)
+   ===================================================== */
+
+@keyframes scanLine {
+  0%   { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+
+.scanlines {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  overflow: hidden;
+  opacity: 0.03;
+}
+
+.scanlines::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(
+    transparent,
+    rgba(0, 245, 255, 0.8),
+    transparent
+  );
+  animation: scanLine 6s linear infinite;
+}
+
+/* Background scan-line grid (subtle) */
+.bg-scanlines {
+  background-image:
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 3px,
+      rgba(0, 0, 0, 0.12) 3px,
+      rgba(0, 0, 0, 0.12) 4px
+    );
+}
+
+/* =====================================================
+   FLICKER EFFECT (CRT screen feel)
+   ===================================================== */
+
+@keyframes flicker {
+  0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% { opacity: 1; }
+  20%, 24%, 55% { opacity: 0.85; }
+}
+
+.anim-flicker { animation: flicker 6s linear infinite; }
+
+/* =====================================================
+   TYPE-WRITER CURSOR
+   ===================================================== */
+
+@keyframes cursorBlink {
+  0%, 100% { border-right-color: var(--neon-cyan); }
+  50%      { border-right-color: transparent; }
+}
+
+.typewriter {
+  display: inline-block;
+  border-right: 2px solid var(--neon-cyan);
+  padding-right: 2px;
+  animation: cursorBlink 1s step-end infinite;
+}
+
+/* =====================================================
+   BORDER TRACE (loading border)
+   ===================================================== */
+
+@keyframes borderTrace {
+  0%   { stroke-dashoffset: 1000; }
+  100% { stroke-dashoffset: 0; }
+}
+
+/* =====================================================
+   FLOAT / HOVER BOB
+   ===================================================== */
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-6px); }
+}
+
+.anim-float { animation: float 3s ease-in-out infinite; }
+
+/* =====================================================
+   COLOR CYCLE (neon rainbow)
+   ===================================================== */
+
+@keyframes colorCycle {
+  0%   { color: var(--neon-cyan);   }
+  33%  { color: var(--neon-purple); }
+  66%  { color: var(--neon-pink);   }
+  100% { color: var(--neon-cyan);   }
+}
+
+.anim-color-cycle { animation: colorCycle 4s linear infinite; }
+
+/* =====================================================
+   REDUCED MOTION SUPPORT
+   ===================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration:        0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration:       0.01ms !important;
+    scroll-behavior:           auto !important;
+  }
+}

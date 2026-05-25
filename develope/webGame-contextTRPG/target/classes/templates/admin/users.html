@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="ko"
+      xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: layout(
+          title     = '유저 관리',
+          sidebar   = ~{::aside},
+          content   = ~{::section}
+      )}">
+
+<!-- ── Sidebar ── -->
+<aside>
+  <div class="sidebar__section">
+    <h3 class="sidebar__heading ls-wider text-xs text-muted">ADMIN MENU</h3>
+    <ul class="sidebar__nav" role="list">
+      <li>
+        <a class="sidebar__link" th:href="@{/admin/dashboard}">
+          <span class="sidebar__icon" aria-hidden="true">◈</span>
+          DASHBOARD
+        </a>
+      </li>
+      <li>
+        <a class="sidebar__link sidebar__link--active"
+           th:href="@{/admin/users}">
+          <span class="sidebar__icon" aria-hidden="true">◉</span>
+          USER MGMT
+        </a>
+      </li>
+    </ul>
+  </div>
+</aside>
+
+<!-- ── Main content ── -->
+<section>
+
+  <!-- Page header -->
+  <div class="page-header mb-8 flex flex--between flex--center">
+    <div>
+      <h1 class="text-xl font-bold text-primary ls-wide glitch-on-hover"
+          data-text="USER MANAGEMENT">
+        USER MANAGEMENT
+      </h1>
+      <p class="text-sm text-muted mt-2">유저 계정 관리 — 정지 / 해제 / 삭제</p>
+    </div>
+    <a class="btn btn--ghost btn--sm" th:href="@{/admin/dashboard}">
+      &larr; DASHBOARD
+    </a>
+  </div>
+
+  <!-- ── Search bar ── -->
+  <div class="cyberpunk-panel mb-6">
+    <div class="cyberpunk-panel__body">
+      <div class="flex flex--gap-md flex--center">
+        <label for="userSearch" class="text-xs text-muted ls-wider" style="white-space:nowrap">
+          SEARCH USER
+        </label>
+        <input id="userSearch"
+               type="search"
+               class="input input--full"
+               placeholder="유저명 또는 이메일 입력..."
+               aria-label="유저 검색"
+               oninput="filterTable(this.value)" />
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Users table ── -->
+  <div class="cyberpunk-panel">
+    <div class="cyberpunk-panel__header">
+      <h2 class="text-sm font-bold ls-wider text-secondary">ALL USERS</h2>
+      <span class="text-xs text-muted"
+            th:text="'총 ' + ${users != null ? users.size() : 0} + '명'">총 0명</span>
+    </div>
+    <div class="cyberpunk-panel__body" style="overflow-x: auto;">
+      <table class="data-table" id="userTable" aria-label="전체 유저 목록">
+        <thead>
+          <tr>
+            <th class="text-xs ls-wider">ID</th>
+            <th class="text-xs ls-wider">USERNAME</th>
+            <th class="text-xs ls-wider">EMAIL</th>
+            <th class="text-xs ls-wider">ROLE</th>
+            <th class="text-xs ls-wider">STATUS</th>
+            <th class="text-xs ls-wider">JOINED</th>
+            <th class="text-xs ls-wider">ACTIONS</th>
+          </tr>
+        </thead>
+        <tbody id="userTableBody">
+          <tr th:each="user : ${users}" th:data-username="${user.username}" th:data-email="${user.email}">
+            <td class="text-xs text-muted" th:text="${user.id}">1</td>
+            <td class="text-sm text-primary" th:text="${user.username}">RUNNER_00</td>
+            <td class="text-xs text-muted" th:text="${user.email}">user@example.com</td>
+            <td>
+              <span class="badge"
+                    th:classappend="${user.role.name() == 'ADMIN'} ? 'badge--admin' : 'badge--user'"
+                    th:text="${user.role}">USER</span>
+            </td>
+            <td>
+              <span class="badge"
+                    th:classappend="${user.enabled} ? 'badge--active' : 'badge--banned'"
+                    th:text="${user.enabled} ? 'ACTIVE' : 'BANNED'">ACTIVE</span>
+            </td>
+            <td class="text-xs text-muted"
+                th:text="${#temporals.format(user.createdAt, 'yyyy-MM-dd')}">—</td>
+            <td>
+              <div class="flex flex--gap-sm">
+                <!-- Ban button (shown when user is active) -->
+                <button th:if="${user.enabled}"
+                        class="btn btn--sm btn--warn"
+                        th:data-id="${user.id}"
+                        th:data-username="${user.username}"
+                        onclick="confirmBan(this)"
+                        aria-label="유저 정지">
+                  BAN
+                </button>
+                <!-- Unban button (shown when user is banned) -->
+                <button th:unless="${user.enabled}"
+                        class="btn btn--sm btn--success"
+                        th:data-id="${user.id}"
+                        th:data-username="${user.username}"
+                        onclick="confirmUnban(this)"
+                        aria-label="유저 정지 해제">
+                  UNBAN
+                </button>
+                <!-- Delete button -->
+                <button class="btn btn--sm btn--danger"
+                        th:data-id="${user.id}"
+                        th:data-username="${user.username}"
+                        onclick="confirmDelete(this)"
+                        aria-label="유저 삭제">
+                  DEL
+                </button>
+              </div>
+            </td>
+          </tr>
+          <tr th:if="${users == null or users.isEmpty()}">
+            <td colspan="7" class="text-center text-muted text-xs">등록된 유저가 없습니다.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</section>
+
+<!-- ── Inline scripts ── -->
+<th:block th:fragment="pageScripts">
+<script th:inline="none">
+  /* ── Table search filter ── */
+  function filterTable(query) {
+    const q = query.toLowerCase();
+    const rows = document.querySelectorAll('#userTableBody tr[data-username]');
+    rows.forEach(row => {
+      const username = (row.dataset.username || '').toLowerCase();
+      const email    = (row.dataset.email    || '').toLowerCase();
+      row.style.display = (username.includes(q) || email.includes(q)) ? '' : 'none';
+    });
+  }
+
+  /* ── Ban ── */
+  function confirmBan(btn) {
+    const id   = btn.dataset.id;
+    const name = btn.dataset.username;
+    if (!confirm(`'${name}' 유저를 정지하시겠습니까?`)) return;
+    fetch(`/api/admin/users/${id}/ban`, { method: 'PUT', headers: authHeaders() })
+      .then(handleResponse)
+      .then(() => location.reload())
+      .catch(err => alert('오류: ' + err.message));
+  }
+
+  /* ── Unban ── */
+  function confirmUnban(btn) {
+    const id   = btn.dataset.id;
+    const name = btn.dataset.username;
+    if (!confirm(`'${name}' 유저의 정지를 해제하시겠습니까?`)) return;
+    fetch(`/api/admin/users/${id}/unban`, { method: 'PUT', headers: authHeaders() })
+      .then(handleResponse)
+      .then(() => location.reload())
+      .catch(err => alert('오류: ' + err.message));
+  }
+
+  /* ── Delete ── */
+  function confirmDelete(btn) {
+    const id   = btn.dataset.id;
+    const name = btn.dataset.username;
+    if (!confirm(`'${name}' 유저를 영구 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) return;
+    fetch(`/api/admin/users/${id}`, { method: 'DELETE', headers: authHeaders() })
+      .then(handleResponse)
+      .then(() => location.reload())
+      .catch(err => alert('오류: ' + err.message));
+  }
+
+  /* ── Helpers ── */
+  function authHeaders() {
+    const token = localStorage.getItem('jwt') || sessionStorage.getItem('jwt') || '';
+    return token ? { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' }
+                 : { 'Content-Type': 'application/json' };
+  }
+
+  function handleResponse(res) {
+    if (!res.ok) {
+      return res.json().then(data => { throw new Error(data.error || '요청 실패'); });
+    }
+    return res.json();
+  }
+</script>
+</th:block>
+
+</html>

@@ -1,0 +1,114 @@
+/* =============================================================
+   CYBERPUNK DESIGN SYSTEM — variables.css
+   Context TRPG Web Game
+   ============================================================= */
+
+:root {
+  /* ── Background Colors ── */
+  --bg-void:        #050508;
+  --bg-deep:        #0a0a0f;
+  --bg-base:        #111118;
+  --bg-surface:     #1a1a24;
+  --bg-elevated:    #22222f;
+  --bg-overlay:     rgba(10, 10, 15, 0.92);
+
+  /* ── Neon Accent Colors ── */
+  --neon-cyan:      #00f5ff;
+  --neon-cyan-dim:  #00b8cc;
+  --neon-purple:    #bf00ff;
+  --neon-purple-dim:#8a00cc;
+  --neon-pink:      #ff006e;
+  --neon-pink-dim:  #cc0056;
+  --neon-green:     #00ff88;
+  --neon-yellow:    #ffe600;
+
+  /* ── Text Colors ── */
+  --text-primary:   #e0e0e0;
+  --text-secondary: #a0a0b8;
+  --text-muted:     #606078;
+  --text-white:     #ffffff;
+  --text-neon:      var(--neon-cyan);
+
+  /* ── Border Colors ── */
+  --border-default: #2a2a3a;
+  --border-subtle:  #1e1e2a;
+  --border-neon:    var(--neon-cyan);
+  --border-purple:  var(--neon-purple);
+  --border-pink:    var(--neon-pink);
+
+  /* ── Glow / Shadow ── */
+  --glow-cyan:      0 0 8px var(--neon-cyan),
+                    0 0 16px rgba(0, 245, 255, 0.4),
+                    0 0 32px rgba(0, 245, 255, 0.15);
+  --glow-purple:    0 0 8px var(--neon-purple),
+                    0 0 16px rgba(191, 0, 255, 0.4),
+                    0 0 32px rgba(191, 0, 255, 0.15);
+  --glow-pink:      0 0 8px var(--neon-pink),
+                    0 0 16px rgba(255, 0, 110, 0.4),
+                    0 0 32px rgba(255, 0, 110, 0.15);
+  --glow-soft:      0 0 4px rgba(0, 245, 255, 0.2),
+                    0 0 12px rgba(0, 245, 255, 0.08);
+  --shadow-card:    0 4px 24px rgba(0, 0, 0, 0.6);
+
+  /* ── Typography ── */
+  --font-mono:      'Share Tech Mono', 'Courier New', 'Lucida Console', monospace;
+  --font-display:   'Orbitron', 'Share Tech Mono', monospace;
+  --font-ui:        'Share Tech Mono', 'Courier New', monospace;
+
+  --fs-xs:    0.625rem;   /* 10px */
+  --fs-sm:    0.75rem;    /* 12px */
+  --fs-base:  0.875rem;   /* 14px */
+  --fs-md:    1rem;       /* 16px */
+  --fs-lg:    1.125rem;   /* 18px */
+  --fs-xl:    1.25rem;    /* 20px */
+  --fs-2xl:   1.5rem;     /* 24px */
+  --fs-3xl:   2rem;       /* 32px */
+  --fs-4xl:   2.5rem;     /* 40px */
+
+  --lh-tight:  1.2;
+  --lh-base:   1.6;
+  --lh-loose:  1.8;
+  --ls-wide:   0.08em;
+  --ls-wider:  0.15em;
+  --ls-widest: 0.25em;
+
+  /* ── Spacing ── */
+  --sp-1:  0.25rem;
+  --sp-2:  0.5rem;
+  --sp-3:  0.75rem;
+  --sp-4:  1rem;
+  --sp-5:  1.25rem;
+  --sp-6:  1.5rem;
+  --sp-8:  2rem;
+  --sp-10: 2.5rem;
+  --sp-12: 3rem;
+  --sp-16: 4rem;
+
+  /* ── Border Radius ── */
+  --radius-sm:   2px;
+  --radius-base: 4px;
+  --radius-md:   6px;
+  --radius-lg:   8px;
+  --radius-xl:   12px;
+
+  /* ── Layout Dimensions ── */
+  --nav-height:     60px;
+  --sidebar-width:  260px;
+  --sidebar-collapsed: 56px;
+  --content-max:    1400px;
+
+  /* ── Transition ── */
+  --transition-fast:   0.15s ease;
+  --transition-base:   0.25s ease;
+  --transition-slow:   0.4s ease;
+  --transition-spring: 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* ── Z-Index Scale ── */
+  --z-base:    1;
+  --z-dropdown: 100;
+  --z-sidebar:  200;
+  --z-navbar:   300;
+  --z-modal:    400;
+  --z-toast:    500;
+  --z-tooltip:  600;
+}

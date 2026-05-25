@@ -1,0 +1,127 @@
+/* =============================================================
+   MAIN ENTRY POINT — main.css
+   Context TRPG Web Game
+
+   Import order matters:
+   1. Design tokens (variables)
+   2. CSS reset / normalize
+   3. Layout (structure)
+   4. Components (UI elements)
+   5. Animations (motion)
+   ============================================================= */
+
+@import url('variables.css');
+@import url('reset.css');
+@import url('layout.css');
+@import url('components.css');
+@import url('animations.css');
+
+/* =============================================================
+   GLOBAL UTILITY CLASSES
+   ============================================================= */
+
+/* ── Text ── */
+.text-cyan    { color: var(--neon-cyan); }
+.text-purple  { color: var(--neon-purple); }
+.text-pink    { color: var(--neon-pink); }
+.text-green   { color: var(--neon-green); }
+.text-muted   { color: var(--text-muted); }
+.text-white   { color: var(--text-white); }
+.text-xs      { font-size: var(--fs-xs); }
+.text-sm      { font-size: var(--fs-sm); }
+.text-base    { font-size: var(--fs-base); }
+.text-md      { font-size: var(--fs-md); }
+.text-lg      { font-size: var(--fs-lg); }
+.text-xl      { font-size: var(--fs-xl); }
+.text-2xl     { font-size: var(--fs-2xl); }
+.text-upper   { text-transform: uppercase; }
+.text-mono    { font-family: var(--font-mono); }
+.text-display { font-family: var(--font-display); }
+.text-center  { text-align: center; }
+.text-right   { text-align: right; }
+.ls-wide      { letter-spacing: var(--ls-wide); }
+.ls-wider     { letter-spacing: var(--ls-wider); }
+.ls-widest    { letter-spacing: var(--ls-widest); }
+
+/* ── Spacing ── */
+.mt-1 { margin-top: var(--sp-1); }  .mb-1 { margin-bottom: var(--sp-1); }
+.mt-2 { margin-top: var(--sp-2); }  .mb-2 { margin-bottom: var(--sp-2); }
+.mt-4 { margin-top: var(--sp-4); }  .mb-4 { margin-bottom: var(--sp-4); }
+.mt-6 { margin-top: var(--sp-6); }  .mb-6 { margin-bottom: var(--sp-6); }
+.mt-8 { margin-top: var(--sp-8); }  .mb-8 { margin-bottom: var(--sp-8); }
+.mx-auto { margin-left: auto; margin-right: auto; }
+.p-4  { padding: var(--sp-4); }
+.p-6  { padding: var(--sp-6); }
+.p-8  { padding: var(--sp-8); }
+
+/* ── Visibility ── */
+.hidden     { display: none !important; }
+.invisible  { visibility: hidden; }
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ── Borders ── */
+.border-neon    { border: 1px solid var(--neon-cyan) !important; }
+.border-purple  { border: 1px solid var(--neon-purple) !important; }
+.border-pink    { border: 1px solid var(--neon-pink) !important; }
+
+/* ── Backgrounds ── */
+.bg-void     { background-color: var(--bg-void); }
+.bg-base     { background-color: var(--bg-base); }
+.bg-surface  { background-color: var(--bg-surface); }
+
+/* ── Overflow ── */
+.overflow-hidden { overflow: hidden; }
+.overflow-auto   { overflow: auto; }
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Width / Height ── */
+.w-full { width: 100%; }
+.h-full { height: 100%; }
+
+/* ── Position ── */
+.relative { position: relative; }
+.absolute { position: absolute; }
+.fixed    { position: fixed; }
+.inset-0  { inset: 0; }
+
+/* ── Pointer ── */
+.cursor-pointer { cursor: pointer; }
+.pointer-none   { pointer-events: none; }
+
+/* ── Rounded ── */
+.rounded-sm { border-radius: var(--radius-sm); }
+.rounded    { border-radius: var(--radius-base); }
+.rounded-md { border-radius: var(--radius-md); }
+.rounded-lg { border-radius: var(--radius-lg); }
+.rounded-full { border-radius: 9999px; }
+
+/* ── Neon accent line (section separator) ── */
+.neon-line {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--neon-cyan) 30%,
+    var(--neon-purple) 70%,
+    transparent 100%
+  );
+  margin: var(--sp-8) 0;
+  opacity: 0.4;
+}
+
+/* ── Glow helpers ── */
+.glow-cyan   { box-shadow: var(--glow-cyan); }
+.glow-purple { box-shadow: var(--glow-purple); }
+.glow-pink   { box-shadow: var(--glow-pink); }

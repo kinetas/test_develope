@@ -1,0 +1,64 @@
+TASK-003 완료 보고
+담당: Backend AI
+날짜: 2026-05-24
+
+[생성된 파일 목록]
+1. model/FileType.java
+   - enum: CHARACTER_SHEET, MAP, BGM, IMAGE, OTHER
+
+2. model/UploadedFile.java
+   - 필드: id, originalName, storedName, filePath, fileType(enum), fileSize, uploader(ManyToOne User), uploadedAt
+   - @PrePersist로 uploadedAt 자동 설정
+
+3. repository/UploadedFileRepository.java
+   - JpaRepository<UploadedFile, Long> 확장
+   - findByUploader(User), findByFileType(FileType) 메서드 추가
+
+4. config/FileStorageConfig.java
+   - @Value("${file.upload-dir:uploads/}")로 저장 경로 주입
+   - @PostConstruct에서 업로드 디렉토리 자동 생성
+
+5. dto/file/FileConstants.java
+   - MAX_FILE_SIZE = 50MB (50L * 1024L * 1024L)
+   - ALLOWED_EXTENSIONS 배열 정의
+
+6. dto/file/FileUploadResponse.java
+   - 필드: fileId, originalName, fileType, fileSize, uploadedAt
+
+7. service/FileStorageService.java
+   - storeFile(MultipartFile, FileType, User): 확장자 검증, 크기 제한(50MB), UUID 저장명 생성, 파일 시스템 저장, DB 엔티티 반환
+   - loadFileAsResource(String storedName): UrlResource 반환
+   - deleteFile(Long fileId, User requester): 본인/ADMIN 권한 검증 후 파일 삭제
+
+8. controller/FileController.java
+   - 4개 엔드포인트 구현 (상세는 [API 엔드포인트] 섹션 참조)
+
+9. resources/application.properties (수정)
+   - file.upload-dir=uploads/
+   - spring.servlet.multipart.max-file-size=50MB
+   - spring.servlet.multipart.max-request-size=55MB 추가
+
+[API 엔드포인트]
+POST   /api/files/upload          파일 업로드 (multipart/form-data, params: file, fileType)
+GET    /api/files/{fileId}        파일 다운로드 (attachment)
+DELETE /api/files/{fileId}        파일 삭제 (본인 또는 ADMIN만 허용)
+GET    /api/files/my              내가 업로드한 파일 목록 조회
+
+[허용 파일 타입]
+- 스프레드시트: .xlsx, .xls
+- 이미지:       .png, .jpg, .gif
+- 오디오:       .mp3, .wav, .ogg
+- 데이터/텍스트: .json, .txt
+
+[파일 크기 제한]
+- 단일 파일 최대: 50MB
+- 요청 전체 최대: 55MB (application.properties)
+
+[보안 처리]
+- 모든 엔드포인트는 JWT 인증 필요 (SecurityConfig 기존 설정 활용)
+- 파일 삭제: 업로더 본인 또는 ADMIN 역할만 가능
+- UUID 기반 저장명으로 원본 파일명 노출 방지
+
+[다음 단계]
+TASK-004 (캐릭터 시트), TASK-005 (맵), TASK-007 (BGM) 진행 가능
+위 태스크들은 FileStorageService.storeFile()과 FileType enum을 직접 활용할 수 있습니다.

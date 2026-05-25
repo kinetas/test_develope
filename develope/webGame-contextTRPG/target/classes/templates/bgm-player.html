@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="ko"
+      xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: layout(
+          'BGM 플레이어',
+          ~{},
+          ~{::main-content}
+      )}">
+<head><title>BGM 플레이어</title></head>
+<body>
+
+<!-- ════════════════════════════════════════
+     PAGE STYLES
+     ════════════════════════════════════════ -->
+<th:block th:fragment="pageStyles">
+  <style>
+    /* ── BGM Player Page ─────────────────────────────── */
+    .bgm-page {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: var(--sp-8) var(--sp-4);
+    }
+
+    .bgm-page__header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: var(--sp-8);
+      padding-bottom: var(--sp-4);
+      border-bottom: 1px solid var(--border-default);
+    }
+
+    .bgm-page__title {
+      font-family: var(--font-display);
+      font-size: var(--fs-2xl);
+      font-weight: 700;
+      letter-spacing: var(--ls-wider);
+      color: var(--neon-cyan);
+      text-shadow: var(--glow-cyan);
+      text-transform: uppercase;
+    }
+
+    /* ── Cyberpunk Panel ─────────────────────────────── */
+    .cyberpunk-panel {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-lg);
+      padding: var(--sp-6);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cyberpunk-panel::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg,
+        transparent,
+        var(--neon-cyan),
+        var(--neon-purple),
+        transparent
+      );
+    }
+
+    .cyberpunk-panel__label {
+      font-family: var(--font-display);
+      font-size: var(--fs-xs);
+      letter-spacing: var(--ls-widest);
+      text-transform: uppercase;
+      color: var(--neon-cyan);
+      margin-bottom: var(--sp-4);
+      display: flex;
+      align-items: center;
+      gap: var(--sp-2);
+    }
+
+    .cyberpunk-panel__label::before {
+      content: '';
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      background: var(--neon-cyan);
+      box-shadow: var(--glow-cyan);
+      border-radius: 50%;
+    }
+
+    /* ── Now Playing ─────────────────────────────────── */
+    .now-playing {
+      display: flex;
+      flex-direction: column;
+      gap: var(--sp-4);
+    }
+
+    .now-playing__track-name {
+      font-family: var(--font-mono);
+      font-size: var(--fs-lg);
+      color: var(--text-white);
+      letter-spacing: var(--ls-wide);
+      min-height: 1.5em;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .now-playing__track-name.no-track {
+      color: var(--text-muted);
+      font-style: italic;
+    }
+
+    /* ── Visualizer Bar ──────────────────────────────── */
+    .visualizer {
+      display: flex;
+      align-items: flex-end;
+      gap: 3px;
+      height: 32px;
+    }
+
+    .visualizer__bar {
+      width: 4px;
+      border-radius: 2px 2px 0 0;
+      background: var(--neon-cyan);
+      box-shadow: 0 0 4px var(--neon-cyan);
+      transition: height var(--transition-fast);
+      height: 4px;
+    }
+
+    .visualizer--playing .visualizer__bar {
+      animation: viz-pulse 0.8s ease-in-out infinite alternate;
+    }
+
+    .visualizer--playing .visualizer__bar:nth-child(2) { animation-delay: 0.1s; }
+    .visualizer--playing .visualizer__bar:nth-child(3) { animation-delay: 0.2s; }
+    .visualizer--playing .visualizer__bar:nth-child(4) { animation-delay: 0.3s; }
+    .visualizer--playing .visualizer__bar:nth-child(5) { animation-delay: 0.4s; }
+    .visualizer--playing .visualizer__bar:nth-child(6) { animation-delay: 0.25s; }
+    .visualizer--playing .visualizer__bar:nth-child(7) { animation-delay: 0.15s; }
+    .visualizer--playing .visualizer__bar:nth-child(8) { animation-delay: 0.35s; }
+
+    @keyframes viz-pulse {
+      0%   { height: 4px;  opacity: 0.5; }
+      100% { height: 28px; opacity: 1;   }
+    }
+
+    /* ── Audio Controls ──────────────────────────────── */
+    .audio-controls {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-4);
+      flex-wrap: wrap;
+    }
+
+    .audio-controls__progress-wrap {
+      flex: 1;
+      min-width: 160px;
+      display: flex;
+      flex-direction: column;
+      gap: var(--sp-1);
+    }
+
+    .audio-controls__time {
+      font-family: var(--font-mono);
+      font-size: var(--fs-xs);
+      color: var(--text-secondary);
+      letter-spacing: var(--ls-wider);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    /* Custom range slider */
+    input[type="range"].cyber-range {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 4px;
+      border-radius: 2px;
+      background: var(--bg-elevated);
+      outline: none;
+      cursor: pointer;
+    }
+
+    input[type="range"].cyber-range::-webkit-slider-runnable-track {
+      height: 4px;
+      border-radius: 2px;
+      background: linear-gradient(
+        to right,
+        var(--neon-cyan) var(--seek-pct, 0%),
+        var(--bg-elevated) var(--seek-pct, 0%)
+      );
+    }
+
+    input[type="range"].cyber-range::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--neon-cyan);
+      box-shadow: 0 0 6px var(--neon-cyan);
+      margin-top: -4px;
+      cursor: pointer;
+      transition: box-shadow var(--transition-fast);
+    }
+
+    input[type="range"].cyber-range:hover::-webkit-slider-thumb {
+      box-shadow: var(--glow-cyan);
+    }
+
+    /* Volume slider — purple accent */
+    input[type="range"].cyber-range--volume::-webkit-slider-runnable-track {
+      background: linear-gradient(
+        to right,
+        var(--neon-purple) var(--vol-pct, 80%),
+        var(--bg-elevated) var(--vol-pct, 80%)
+      );
+    }
+
+    input[type="range"].cyber-range--volume::-webkit-slider-thumb {
+      background: var(--neon-purple);
+      box-shadow: 0 0 6px var(--neon-purple);
+    }
+
+    input[type="range"].cyber-range--volume:hover::-webkit-slider-thumb {
+      box-shadow: var(--glow-purple);
+    }
+
+    .volume-row {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-2);
+      min-width: 120px;
+    }
+
+    .volume-icon {
+      color: var(--neon-purple);
+      font-size: var(--fs-sm);
+      flex-shrink: 0;
+      width: 18px;
+      text-align: center;
+    }
+
+    /* ── Neon Button ─────────────────────────────────── */
+    .neon-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--sp-2);
+      padding: var(--sp-2) var(--sp-4);
+      font-family: var(--font-display);
+      font-size: var(--fs-xs);
+      font-weight: 700;
+      letter-spacing: var(--ls-widest);
+      text-transform: uppercase;
+      border-radius: var(--radius-base);
+      border: 1px solid var(--neon-cyan);
+      color: var(--neon-cyan);
+      background: transparent;
+      cursor: pointer;
+      transition:
+        background-color var(--transition-base),
+        box-shadow var(--transition-base),
+        color var(--transition-base);
+      user-select: none;
+      flex-shrink: 0;
+    }
+
+    .neon-btn:hover {
+      background-color: rgba(0, 245, 255, 0.1);
+      box-shadow: var(--glow-cyan);
+      color: var(--text-white);
+    }
+
+    .neon-btn:active {
+      transform: scale(0.96);
+    }
+
+    .neon-btn--purple {
+      border-color: var(--neon-purple);
+      color: var(--neon-purple);
+    }
+
+    .neon-btn--purple:hover {
+      background-color: rgba(191, 0, 255, 0.1);
+      box-shadow: var(--glow-purple);
+      color: var(--text-white);
+    }
+
+    .neon-btn--pink {
+      border-color: var(--neon-pink);
+      color: var(--neon-pink);
+    }
+
+    .neon-btn--pink:hover {
+      background-color: rgba(255, 0, 110, 0.1);
+      box-shadow: var(--glow-pink);
+      color: var(--text-white);
+    }
+
+    .neon-btn--active {
+      background-color: rgba(0, 245, 255, 0.15);
+      box-shadow: var(--glow-cyan);
+    }
+
+    .neon-btn--lg {
+      padding: var(--sp-3) var(--sp-6);
+      font-size: var(--fs-sm);
+    }
+
+    /* ── Track List ──────────────────────────────────── */
+    .track-list {
+      display: flex;
+      flex-direction: column;
+      gap: var(--sp-2);
+      margin-top: var(--sp-4);
+    }
+
+    .track-item {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-3);
+      padding: var(--sp-3) var(--sp-4);
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-base);
+      cursor: pointer;
+      transition:
+        border-color var(--transition-fast),
+        background-color var(--transition-fast);
+    }
+
+    .track-item:hover {
+      border-color: var(--neon-cyan);
+      background-color: rgba(0, 245, 255, 0.04);
+    }
+
+    .track-item--active {
+      border-color: var(--neon-cyan);
+      background-color: rgba(0, 245, 255, 0.08);
+      box-shadow: 0 0 8px rgba(0, 245, 255, 0.15);
+    }
+
+    .track-item__play-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 1px solid var(--neon-cyan);
+      color: var(--neon-cyan);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      flex-shrink: 0;
+      transition: box-shadow var(--transition-fast);
+    }
+
+    .track-item:hover .track-item__play-icon,
+    .track-item--active .track-item__play-icon {
+      box-shadow: 0 0 6px var(--neon-cyan);
+    }
+
+    .track-item__info {
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .track-item__title {
+      font-family: var(--font-mono);
+      font-size: var(--fs-sm);
+      color: var(--text-primary);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .track-item--active .track-item__title {
+      color: var(--neon-cyan);
+    }
+
+    .track-item__meta {
+      font-size: var(--fs-xs);
+      color: var(--text-muted);
+      letter-spacing: var(--ls-wide);
+      margin-top: 2px;
+    }
+
+    .track-item__delete {
+      opacity: 0;
+      transition: opacity var(--transition-fast);
+      background: none;
+      border: none;
+      color: var(--neon-pink);
+      cursor: pointer;
+      font-size: var(--fs-sm);
+      padding: var(--sp-1);
+      line-height: 1;
+    }
+
+    .track-item:hover .track-item__delete {
+      opacity: 1;
+    }
+
+    /* ── Upload Section ──────────────────────────────── */
+    .upload-area {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-4);
+      flex-wrap: wrap;
+    }
+
+    .upload-input {
+      display: none;
+    }
+
+    .upload-label {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--sp-2);
+      padding: var(--sp-2) var(--sp-4);
+      border: 1px dashed var(--neon-purple);
+      border-radius: var(--radius-base);
+      color: var(--neon-purple);
+      font-family: var(--font-display);
+      font-size: var(--fs-xs);
+      letter-spacing: var(--ls-wider);
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background-color var(--transition-base), box-shadow var(--transition-base);
+    }
+
+    .upload-label:hover {
+      background-color: rgba(191, 0, 255, 0.08);
+      box-shadow: var(--glow-purple);
+    }
+
+    .upload-status {
+      font-family: var(--font-mono);
+      font-size: var(--fs-xs);
+      color: var(--text-secondary);
+    }
+
+    /* ── Tab Switcher ────────────────────────────────── */
+    .tab-bar {
+      display: flex;
+      gap: var(--sp-1);
+      margin-bottom: var(--sp-4);
+    }
+
+    .tab-btn {
+      padding: var(--sp-2) var(--sp-4);
+      font-family: var(--font-display);
+      font-size: var(--fs-xs);
+      letter-spacing: var(--ls-wider);
+      text-transform: uppercase;
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-base);
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+
+    .tab-btn:hover {
+      border-color: var(--neon-cyan);
+      color: var(--neon-cyan);
+    }
+
+    .tab-btn--active {
+      border-color: var(--neon-cyan);
+      color: var(--neon-cyan);
+      background: rgba(0, 245, 255, 0.06);
+    }
+
+    /* ── Utility ─────────────────────────────────────── */
+    .empty-state {
+      text-align: center;
+      padding: var(--sp-8) var(--sp-4);
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      font-size: var(--fs-sm);
+      letter-spacing: var(--ls-wide);
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--sp-6);
+    }
+
+    @media (max-width: 700px) {
+      .grid-2 { grid-template-columns: 1fr; }
+    }
+  </style>
+</th:block>
+
+<!-- ════════════════════════════════════════
+     PAGE CONTENT
+     ════════════════════════════════════════ -->
+<main th:fragment="main-content">
+  <div class="bgm-page">
+
+    <!-- Page Header -->
+    <header class="bgm-page__header">
+      <h1 class="bgm-page__title">&#9835; BGM Player</h1>
+      <span class="text-xs text-muted ls-wider" style="font-family:var(--font-mono)">
+        AUDIO SYSTEM v1.0
+      </span>
+    </header>
+
+    <!-- ── Now Playing + Controls ── -->
+    <div class="cyberpunk-panel" style="margin-bottom: var(--sp-6);">
+      <div class="cyberpunk-panel__label">NOW PLAYING</div>
+
+      <div class="now-playing">
+
+        <!-- Track name + visualizer -->
+        <div style="display:flex; align-items:center; gap:var(--sp-4);">
+          <div id="nowPlayingName" class="now-playing__track-name no-track">
+            — 트랙을 선택하세요 —
+          </div>
+          <div class="visualizer" id="visualizer">
+            <div class="visualizer__bar"></div>
+            <div class="visualizer__bar"></div>
+            <div class="visualizer__bar"></div>
+            <div class="visualizer__bar"></div>
+            <div class="visualizer__bar"></div>
+            <div class="visualizer__bar"></div>
+            <div class="visualizer__bar"></div>
+            <div class="visualizer__bar"></div>
+          </div>
+        </div>
+
+        <!-- Hidden HTML5 audio element -->
+        <audio id="bgmAudio" preload="none"></audio>
+
+        <!-- Seek bar -->
+        <div class="audio-controls__progress-wrap">
+          <input type="range" id="seekBar"
+                 class="cyber-range"
+                 min="0" max="100" value="0"
+                 aria-label="재생 위치" />
+          <div class="audio-controls__time">
+            <span id="currentTime">0:00</span>
+            <span id="duration">0:00</span>
+          </div>
+        </div>
+
+        <!-- Playback buttons + volume -->
+        <div class="audio-controls">
+
+          <button id="playPauseBtn" class="neon-btn neon-btn--lg"
+                  aria-label="재생/정지">
+            &#9654; PLAY
+          </button>
+
+          <button id="stopBtn" class="neon-btn"
+                  aria-label="정지">
+            &#9632; STOP
+          </button>
+
+          <button id="loopBtn" class="neon-btn neon-btn--purple"
+                  aria-label="루프 재생 토글">
+            &#10227; LOOP: OFF
+          </button>
+
+          <!-- Volume -->
+          <div class="volume-row">
+            <span class="volume-icon" id="volumeIcon">&#128266;</span>
+            <input type="range" id="volumeSlider"
+                   class="cyber-range cyber-range--volume"
+                   min="0" max="100" value="80"
+                   aria-label="볼륨" />
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Tracks + Upload (2-col) ── -->
+    <div class="grid-2">
+
+      <!-- Track List Panel -->
+      <div class="cyberpunk-panel">
+        <div class="cyberpunk-panel__label">TRACK LIST</div>
+
+        <!-- Tab bar -->
+        <div class="tab-bar">
+          <button class="tab-btn tab-btn--active" id="tabMy" data-tab="my">
+            MY TRACKS
+          </button>
+          <button class="tab-btn" id="tabPublic" data-tab="public">
+            PUBLIC
+          </button>
+        </div>
+
+        <!-- Track list container -->
+        <div id="trackListContainer" class="track-list">
+          <div class="empty-state">로딩 중...</div>
+        </div>
+      </div>
+
+      <!-- Upload + Add Track Panel -->
+      <div class="cyberpunk-panel">
+        <div class="cyberpunk-panel__label">ADD TRACK</div>
+
+        <!-- Step 1: Upload audio file -->
+        <p class="text-xs text-muted ls-wide" style="margin-bottom:var(--sp-4);">
+          1. BGM 파일 업로드 (mp3 / ogg / wav)
+        </p>
+        <div class="upload-area">
+          <label class="upload-label" for="bgmFileInput">
+            &#8679; 파일 선택
+          </label>
+          <input type="file" id="bgmFileInput" class="upload-input"
+                 accept=".mp3,.ogg,.wav,.flac,.aac" />
+          <span id="uploadStatus" class="upload-status">파일 미선택</span>
+        </div>
+        <button id="uploadBtn" class="neon-btn neon-btn--purple"
+                style="margin-top:var(--sp-3);">
+          &#8679; UPLOAD
+        </button>
+
+        <hr style="border-color:var(--border-default); margin:var(--sp-5) 0;" />
+
+        <!-- Step 2: Register track -->
+        <p class="text-xs text-muted ls-wide" style="margin-bottom:var(--sp-4);">
+          2. 트랙 정보 입력
+        </p>
+
+        <label class="text-xs text-secondary ls-wide"
+               style="display:block; margin-bottom:var(--sp-1);">
+          TRACK TITLE
+        </label>
+        <input type="text" id="trackTitle"
+               placeholder="트랙 제목을 입력하세요"
+               style="width:100%; padding:var(--sp-2) var(--sp-3);
+                      background:var(--bg-elevated); border:1px solid var(--border-default);
+                      border-radius:var(--radius-base); color:var(--text-primary);
+                      font-family:var(--font-mono); font-size:var(--fs-sm);
+                      outline:none; box-sizing:border-box; margin-bottom:var(--sp-3);" />
+
+        <label style="display:flex; align-items:center; gap:var(--sp-2);
+                      margin-bottom:var(--sp-4); cursor:pointer;">
+          <input type="checkbox" id="isPublic"
+                 style="accent-color:var(--neon-cyan); width:14px; height:14px;" />
+          <span class="text-xs text-secondary ls-wide">공개 트랙으로 등록</span>
+        </label>
+
+        <button id="addTrackBtn" class="neon-btn" style="width:100%;">
+          + REGISTER TRACK
+        </button>
+
+        <div id="addTrackStatus" class="upload-status"
+             style="margin-top:var(--sp-3); min-height:1.2em;"></div>
+
+        <!-- Uploaded file id (hidden, filled after upload) -->
+        <input type="hidden" id="uploadedFileId" value="" />
+      </div>
+
+    </div>
+    <!-- / .grid-2 -->
+
+  </div>
+</main>
+
+<!-- ════════════════════════════════════════
+     PAGE SCRIPTS
+     ════════════════════════════════════════ -->
+<th:block th:fragment="pageScripts">
+  <script th:src="@{/js/bgm-player.js}"></script>
+</th:block>
+
+</body>
+</html>

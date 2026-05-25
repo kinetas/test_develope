@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>CONTEXT TRPG — 채팅</title>
+
+    <!-- Cyberpunk Design System -->
+    <link rel="stylesheet" th:href="@{/css/variables.css}"/>
+    <link rel="stylesheet" th:href="@{/css/reset.css}"/>
+    <link rel="stylesheet" th:href="@{/css/components.css}"/>
+    <link rel="stylesheet" th:href="@{/css/layout.css}"/>
+    <link rel="stylesheet" th:href="@{/css/animations.css}"/>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com"/>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet"/>
+
+    <!-- SockJS + STOMP.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@7/bundles/stomp.umd.min.js"></script>
+
+    <style>
+        /* ── Page Layout ─────────────────────────────────────────── */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: var(--font-mono);
+            background-color: var(--bg-void);
+            color: var(--text-primary);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ── Top Nav Bar ─────────────────────────────────────────── */
+        .chat-navbar {
+            height: var(--nav-height);
+            background-color: var(--bg-deep);
+            border-bottom: 1px solid var(--border-neon);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 var(--sp-6);
+            flex-shrink: 0;
+            box-shadow: 0 2px 16px rgba(0,245,255,0.08);
+        }
+
+        .chat-navbar__brand {
+            font-family: var(--font-display);
+            font-size: var(--fs-lg);
+            font-weight: 900;
+            letter-spacing: var(--ls-wider);
+            text-transform: uppercase;
+            color: var(--neon-cyan);
+            text-shadow: var(--glow-cyan);
+        }
+
+        .chat-navbar__session {
+            font-size: var(--fs-xs);
+            color: var(--text-muted);
+            letter-spacing: var(--ls-wide);
+        }
+
+        .chat-navbar__status {
+            display: flex;
+            align-items: center;
+            gap: var(--sp-2);
+            font-size: var(--fs-xs);
+            color: var(--text-muted);
+            letter-spacing: var(--ls-wide);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--text-muted);
+            transition: background-color var(--transition-base),
+                        box-shadow var(--transition-base);
+        }
+        .status-dot.connected {
+            background-color: var(--neon-green);
+            box-shadow: 0 0 6px var(--neon-green);
+            animation: pulse 2s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50%       { opacity: 0.5; }
+        }
+
+        /* ── Main Chat Area ──────────────────────────────────────── */
+        .chat-layout {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+            gap: 0;
+        }
+
+        /* ── Sidebar ─────────────────────────────────────────────── */
+        .chat-sidebar {
+            width: 240px;
+            flex-shrink: 0;
+            background-color: var(--bg-deep);
+            border-right: 1px solid var(--border-default);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .sidebar-section {
+            padding: var(--sp-4) var(--sp-5);
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .sidebar-section__title {
+            font-family: var(--font-display);
+            font-size: var(--fs-xs);
+            font-weight: 700;
+            letter-spacing: var(--ls-widest);
+            text-transform: uppercase;
+            color: var(--neon-cyan);
+            margin-bottom: var(--sp-3);
+        }
+
+        /* Session switcher */
+        .session-input {
+            width: 100%;
+            padding: var(--sp-2) var(--sp-3);
+            font-family: var(--font-mono);
+            font-size: var(--fs-xs);
+            color: var(--text-primary);
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-base);
+            margin-bottom: var(--sp-2);
+        }
+        .session-input:focus {
+            border-color: var(--neon-cyan);
+            outline: none;
+        }
+
+        .neon-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            padding: var(--sp-2) var(--sp-3);
+            font-family: var(--font-display);
+            font-size: var(--fs-xs);
+            font-weight: 700;
+            letter-spacing: var(--ls-wider);
+            text-transform: uppercase;
+            border-radius: var(--radius-base);
+            border: 1px solid;
+            cursor: pointer;
+            transition: background-color var(--transition-base),
+                        box-shadow var(--transition-base),
+                        color var(--transition-base);
+            background-color: transparent;
+        }
+
+        .neon-btn--cyan {
+            color: var(--neon-cyan);
+            border-color: var(--neon-cyan);
+        }
+        .neon-btn--cyan:hover {
+            background-color: rgba(0,245,255,0.12);
+            box-shadow: var(--glow-cyan);
+            color: #fff;
+        }
+        .neon-btn--purple {
+            color: var(--neon-purple);
+            border-color: var(--neon-purple);
+        }
+        .neon-btn--purple:hover {
+            background-color: rgba(191,0,255,0.12);
+            box-shadow: var(--glow-purple);
+            color: #fff;
+        }
+        .neon-btn--pink {
+            color: var(--neon-pink);
+            border-color: var(--neon-pink);
+        }
+        .neon-btn--pink:hover {
+            background-color: rgba(255,0,110,0.12);
+            box-shadow: var(--glow-pink);
+            color: #fff;
+        }
+        .neon-btn--green {
+            color: var(--neon-green);
+            border-color: var(--neon-green);
+        }
+        .neon-btn--green:hover {
+            background-color: rgba(0,255,136,0.12);
+            box-shadow: 0 0 8px var(--neon-green), 0 0 16px rgba(0,255,136,0.4);
+            color: #fff;
+        }
+        .neon-btn--sm {
+            padding: var(--sp-1) var(--sp-2);
+            font-size: 0.6rem;
+        }
+        .neon-btn:disabled {
+            opacity: 0.38;
+            cursor: not-allowed;
+        }
+
+        /* Dice buttons grid */
+        .dice-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--sp-2);
+        }
+
+        /* ── Cyberpunk Panel ─────────────────────────────────────── */
+        .cyberpunk-panel {
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border-default);
+            border-radius: var(--radius-lg);
+            position: relative;
+            overflow: hidden;
+        }
+        .cyberpunk-panel::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--neon-cyan), var(--neon-purple), var(--neon-pink));
+            opacity: 0.7;
+        }
+
+        /* ── Chat Window ─────────────────────────────────────────── */
+        .chat-main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background-color: var(--bg-base);
+        }
+
+        .chat-panel-header {
+            padding: var(--sp-3) var(--sp-5);
+            background-color: var(--bg-elevated);
+            border-bottom: 1px solid var(--border-default);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+
+        .chat-panel-title {
+            font-family: var(--font-display);
+            font-size: var(--fs-sm);
+            font-weight: 700;
+            letter-spacing: var(--ls-wider);
+            text-transform: uppercase;
+            color: var(--neon-cyan);
+        }
+
+        /* Message list */
+        .message-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: var(--sp-4) var(--sp-5);
+            display: flex;
+            flex-direction: column;
+            gap: var(--sp-3);
+            scroll-behavior: smooth;
+        }
+
+        .message-list::-webkit-scrollbar { width: 4px; }
+        .message-list::-webkit-scrollbar-track { background: var(--bg-deep); }
+        .message-list::-webkit-scrollbar-thumb {
+            background: var(--border-default);
+            border-radius: 2px;
+        }
+        .message-list::-webkit-scrollbar-thumb:hover {
+            background: var(--neon-cyan-dim);
+        }
+
+        /* Individual message bubbles */
+        .message {
+            display: flex;
+            flex-direction: column;
+            gap: var(--sp-1);
+            animation: messageIn 0.2s ease;
+        }
+
+        @keyframes messageIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .message__meta {
+            display: flex;
+            align-items: center;
+            gap: var(--sp-3);
+        }
+
+        .message__sender {
+            font-family: var(--font-display);
+            font-size: var(--fs-xs);
+            font-weight: 700;
+            letter-spacing: var(--ls-wide);
+            color: var(--neon-cyan);
+        }
+
+        .message__time {
+            font-size: var(--fs-xs);
+            color: var(--text-muted);
+        }
+
+        .message__body {
+            font-size: var(--fs-base);
+            color: var(--text-primary);
+            line-height: var(--lh-base);
+            padding: var(--sp-2) var(--sp-3);
+            background-color: var(--bg-surface);
+            border-radius: var(--radius-base);
+            border-left: 2px solid var(--border-default);
+            word-break: break-word;
+        }
+
+        /* Type-specific styles */
+        .message--join .message__body,
+        .message--leave .message__body {
+            background-color: transparent;
+            border-left-color: var(--neon-purple-dim);
+            color: var(--text-muted);
+            font-style: italic;
+            padding-left: var(--sp-2);
+        }
+        .message--join .message__sender { color: var(--neon-green); }
+        .message--leave .message__sender { color: var(--neon-pink); }
+
+        .message--dice .message__body {
+            border-left-color: var(--neon-yellow);
+            color: var(--neon-yellow);
+            background-color: rgba(255,230,0,0.04);
+            font-family: var(--font-display);
+            font-size: var(--fs-sm);
+            letter-spacing: var(--ls-wide);
+        }
+        .message--dice .message__sender { color: var(--neon-yellow); }
+
+        .message--system .message__body {
+            background-color: rgba(0,245,255,0.04);
+            border-left-color: var(--neon-cyan);
+            color: var(--neon-cyan);
+            text-align: center;
+            font-size: var(--fs-xs);
+            letter-spacing: var(--ls-wide);
+            text-transform: uppercase;
+        }
+
+        /* ── Input Row ───────────────────────────────────────────── */
+        .chat-input-row {
+            display: flex;
+            gap: var(--sp-3);
+            padding: var(--sp-4) var(--sp-5);
+            background-color: var(--bg-elevated);
+            border-top: 1px solid var(--border-default);
+            flex-shrink: 0;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: var(--sp-3) var(--sp-4);
+            font-family: var(--font-mono);
+            font-size: var(--fs-base);
+            color: var(--text-primary);
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border-default);
+            border-bottom: 2px solid var(--neon-cyan-dim);
+            border-radius: var(--radius-base);
+            transition: border-color var(--transition-base),
+                        box-shadow var(--transition-base);
+        }
+        .chat-input:focus {
+            border-color: var(--neon-cyan);
+            border-bottom-color: var(--neon-cyan);
+            box-shadow: 0 0 0 1px rgba(0,245,255,0.2),
+                        inset 0 0 12px rgba(0,245,255,0.04);
+            outline: none;
+        }
+        .chat-input::placeholder { color: var(--text-muted); font-style: italic; }
+
+        .send-btn {
+            padding: var(--sp-3) var(--sp-6);
+            font-family: var(--font-display);
+            font-size: var(--fs-xs);
+            font-weight: 700;
+            letter-spacing: var(--ls-widest);
+            text-transform: uppercase;
+            background-color: transparent;
+            border: 1px solid var(--neon-cyan);
+            border-radius: var(--radius-base);
+            color: var(--neon-cyan);
+            cursor: pointer;
+            transition: background-color var(--transition-base),
+                        box-shadow var(--transition-base),
+                        color var(--transition-base);
+            white-space: nowrap;
+        }
+        .send-btn:hover {
+            background-color: rgba(0,245,255,0.12);
+            box-shadow: var(--glow-cyan);
+            color: #fff;
+        }
+        .send-btn:disabled {
+            opacity: 0.38;
+            cursor: not-allowed;
+        }
+
+        /* ── Toast notification ──────────────────────────────────── */
+        .toast-container {
+            position: fixed;
+            bottom: var(--sp-6);
+            right: var(--sp-6);
+            display: flex;
+            flex-direction: column;
+            gap: var(--sp-2);
+            z-index: var(--z-toast);
+        }
+
+        .toast {
+            padding: var(--sp-3) var(--sp-5);
+            border-radius: var(--radius-md);
+            border: 1px solid;
+            font-size: var(--fs-sm);
+            font-family: var(--font-mono);
+            animation: toastIn 0.3s ease;
+            min-width: 240px;
+        }
+        .toast--success {
+            background: rgba(0,255,136,0.08);
+            border-color: var(--neon-green);
+            color: var(--neon-green);
+        }
+        .toast--error {
+            background: rgba(255,0,110,0.08);
+            border-color: var(--neon-pink);
+            color: var(--neon-pink);
+        }
+        .toast--info {
+            background: rgba(0,245,255,0.08);
+            border-color: var(--neon-cyan);
+            color: var(--neon-cyan);
+        }
+        @keyframes toastIn {
+            from { opacity: 0; transform: translateX(20px); }
+            to   { opacity: 1; transform: translateX(0); }
+        }
+    </style>
+</head>
+<body>
+
+<!-- ─────────────────────────  Navigation Bar  ──────────────────────── -->
+<nav class="chat-navbar">
+    <span class="chat-navbar__brand">Context TRPG</span>
+    <span class="chat-navbar__session" id="navSessionLabel">세션: —</span>
+    <div class="chat-navbar__status">
+        <div class="status-dot" id="statusDot"></div>
+        <span id="statusLabel">연결 안 됨</span>
+    </div>
+</nav>
+
+<!-- ─────────────────────────  Chat Layout  ─────────────────────────── -->
+<div class="chat-layout">
+
+    <!-- ── Sidebar ───────────────────────────────────────────────────── -->
+    <aside class="chat-sidebar">
+
+        <!-- Session / User settings -->
+        <div class="sidebar-section">
+            <div class="sidebar-section__title">세션 설정</div>
+
+            <label style="font-size:var(--fs-xs);color:var(--text-muted);letter-spacing:var(--ls-wide);display:block;margin-bottom:var(--sp-1)">사용자 이름</label>
+            <input id="usernameInput" class="session-input" type="text" placeholder="예: adventurer42" value="Guest"/>
+
+            <label style="font-size:var(--fs-xs);color:var(--text-muted);letter-spacing:var(--ls-wide);display:block;margin-top:var(--sp-3);margin-bottom:var(--sp-1)">세션 ID</label>
+            <input id="sessionIdInput" class="session-input" type="text" placeholder="예: session-001" value="session-001"/>
+
+            <div style="display:flex;gap:var(--sp-2);margin-top:var(--sp-3)">
+                <button id="btnConnect" class="neon-btn neon-btn--cyan" style="flex:1">접속</button>
+                <button id="btnDisconnect" class="neon-btn neon-btn--pink" style="flex:1" disabled>해제</button>
+            </div>
+        </div>
+
+        <!-- Dice roller -->
+        <div class="sidebar-section">
+            <div class="sidebar-section__title">주사위 굴리기</div>
+            <div class="dice-grid">
+                <button class="neon-btn neon-btn--purple neon-btn--sm dice-btn" data-dice="d4"  disabled>d4</button>
+                <button class="neon-btn neon-btn--purple neon-btn--sm dice-btn" data-dice="d6"  disabled>d6</button>
+                <button class="neon-btn neon-btn--purple neon-btn--sm dice-btn" data-dice="d8"  disabled>d8</button>
+                <button class="neon-btn neon-btn--purple neon-btn--sm dice-btn" data-dice="d10" disabled>d10</button>
+                <button class="neon-btn neon-btn--purple neon-btn--sm dice-btn" data-dice="d12" disabled>d12</button>
+                <button class="neon-btn neon-btn--cyan neon-btn--sm dice-btn"   data-dice="d20" disabled>d20</button>
+            </div>
+        </div>
+
+        <!-- Session actions -->
+        <div class="sidebar-section">
+            <div class="sidebar-section__title">세션 액션</div>
+            <button id="btnLoadHistory" class="neon-btn neon-btn--green" style="margin-bottom:var(--sp-2)" disabled>기록 불러오기</button>
+            <button id="btnClearMessages" class="neon-btn neon-btn--pink">화면 지우기</button>
+        </div>
+    </aside>
+
+    <!-- ── Chat Main Panel ────────────────────────────────────────────── -->
+    <div class="chat-main">
+        <div class="chat-panel-header">
+            <span class="chat-panel-title" id="chatPanelTitle">채팅 — 연결 대기 중</span>
+            <span style="font-size:var(--fs-xs);color:var(--text-muted)" id="msgCount">0 메시지</span>
+        </div>
+
+        <!-- Message list -->
+        <div class="message-list" id="messageList">
+            <!-- Messages rendered here by JS -->
+            <div class="message message--system">
+                <div class="message__body">CONTEXT TRPG CHAT SYSTEM v1.0 — 왼쪽 패널에서 접속하세요</div>
+            </div>
+        </div>
+
+        <!-- Input row -->
+        <div class="chat-input-row">
+            <input
+                id="msgInput"
+                class="chat-input"
+                type="text"
+                placeholder="메시지를 입력하세요... (Enter 전송)"
+                disabled
+                maxlength="500"
+            />
+            <button id="btnSend" class="send-btn" disabled>전송</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── Toast container ──────────────────────────────────────────────── -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- ─────────────────────────  JavaScript  ──────────────────────────── -->
+<script>
+    'use strict';
+
+    // ── State ────────────────────────────────────────────────────────────
+    let stompClient = null;
+    let subscription = null;
+    let connected = false;
+    let messageCount = 0;
+
+    // ── DOM refs ─────────────────────────────────────────────────────────
+    const $ = id => document.getElementById(id);
+    const usernameInput    = $('usernameInput');
+    const sessionIdInput   = $('sessionIdInput');
+    const btnConnect       = $('btnConnect');
+    const btnDisconnect    = $('btnDisconnect');
+    const btnSend          = $('btnSend');
+    const btnLoadHistory   = $('btnLoadHistory');
+    const btnClearMessages = $('btnClearMessages');
+    const msgInput         = $('msgInput');
+    const messageList      = $('messageList');
+    const statusDot        = $('statusDot');
+    const statusLabel      = $('statusLabel');
+    const navSessionLabel  = $('navSessionLabel');
+    const chatPanelTitle   = $('chatPanelTitle');
+    const msgCountEl       = $('msgCount');
+    const toastContainer   = $('toastContainer');
+    const diceBtns         = document.querySelectorAll('.dice-btn');
+
+    // ── Connection ────────────────────────────────────────────────────────
+    function connect() {
+        const username  = usernameInput.value.trim() || 'Guest';
+        const sessionId = sessionIdInput.value.trim() || 'session-001';
+
+        const socket = new SockJS('/ws');
+        stompClient = new StompJs.Client({
+            webSocketFactory: () => socket,
+            reconnectDelay: 5000,
+            debug: msg => console.debug('[STOMP]', msg),
+        });
+
+        stompClient.onConnect = () => {
+            connected = true;
+            setConnectionUI(true, username, sessionId);
+
+            // Subscribe to session topic
+            subscription = stompClient.subscribe(
+                '/topic/session/' + sessionId,
+                frame => {
+                    const msg = JSON.parse(frame.body);
+                    appendMessage(msg);
+                }
+            );
+
+            // Send JOIN notification
+            stompClient.publish({
+                destination: '/app/chat.join',
+                body: JSON.stringify({ sessionId, sender: username })
+            });
+
+            showToast('세션 ' + sessionId + ' 에 접속하였습니다.', 'success');
+        };
+
+        stompClient.onDisconnect = () => {
+            connected = false;
+            setConnectionUI(false);
+        };
+
+        stompClient.onStompError = frame => {
+            console.error('STOMP error', frame);
+            showToast('연결 오류: ' + frame.headers.message, 'error');
+        };
+
+        stompClient.activate();
+    }
+
+    function disconnect() {
+        if (!stompClient) return;
+        const username  = usernameInput.value.trim() || 'Guest';
+        const sessionId = sessionIdInput.value.trim() || 'session-001';
+
+        // Send LEAVE before disconnecting
+        if (connected) {
+            stompClient.publish({
+                destination: '/app/chat.leave',
+                body: JSON.stringify({ sessionId, sender: username })
+            });
+        }
+
+        setTimeout(() => {
+            stompClient.deactivate();
+            connected = false;
+            setConnectionUI(false);
+            showToast('연결이 해제되었습니다.', 'info');
+        }, 200);
+    }
+
+    // ── Sending messages ──────────────────────────────────────────────────
+    function sendMessage() {
+        const content   = msgInput.value.trim();
+        const username  = usernameInput.value.trim() || 'Guest';
+        const sessionId = sessionIdInput.value.trim() || 'session-001';
+
+        if (!content || !connected) return;
+
+        stompClient.publish({
+            destination: '/app/chat.send',
+            body: JSON.stringify({
+                sessionId,
+                sender:      username,
+                content,
+                messageType: 'CHAT'
+            })
+        });
+
+        msgInput.value = '';
+        msgInput.focus();
+    }
+
+    // ── Dice roll ─────────────────────────────────────────────────────────
+    function rollDice(diceType) {
+        const username  = usernameInput.value.trim() || 'Guest';
+        const sessionId = sessionIdInput.value.trim() || 'session-001';
+
+        if (!connected) return;
+
+        stompClient.publish({
+            destination: '/app/dice.roll',
+            body: JSON.stringify({
+                sessionId,
+                sender:  username,
+                content: diceType
+            })
+        });
+    }
+
+    // ── Message rendering ─────────────────────────────────────────────────
+    function appendMessage(msg) {
+        const type = (msg.messageType || 'CHAT').toLowerCase();
+        const div  = document.createElement('div');
+        div.className = 'message message--' + type;
+
+        const timeStr = msg.sentAt
+            ? formatTime(msg.sentAt)
+            : formatTime(new Date().toISOString());
+
+        if (type === 'system') {
+            div.innerHTML = `<div class="message__body">${escapeHtml(msg.content)}</div>`;
+        } else {
+            div.innerHTML = `
+                <div class="message__meta">
+                    <span class="message__sender">${escapeHtml(msg.sender || 'SYSTEM')}</span>
+                    <span class="message__time">${timeStr}</span>
+                </div>
+                <div class="message__body">${escapeHtml(msg.content)}</div>
+            `;
+        }
+
+        messageList.appendChild(div);
+        messageList.scrollTop = messageList.scrollHeight;
+
+        messageCount++;
+        msgCountEl.textContent = messageCount + ' 메시지';
+    }
+
+    // ── History load ──────────────────────────────────────────────────────
+    async function loadHistory() {
+        const sessionId = sessionIdInput.value.trim() || 'session-001';
+        try {
+            const resp = await fetch('/api/chat/history/' + encodeURIComponent(sessionId));
+            if (!resp.ok) throw new Error('HTTP ' + resp.status);
+            const messages = await resp.json();
+
+            // Clear and re-render
+            messageList.innerHTML = '';
+            messageCount = 0;
+            messages.forEach(appendMessage);
+            showToast(messages.length + ' 개의 메시지를 불러왔습니다.', 'success');
+        } catch (e) {
+            showToast('기록 불러오기 실패: ' + e.message, 'error');
+        }
+    }
+
+    // ── UI helpers ────────────────────────────────────────────────────────
+    function setConnectionUI(isConnected, username, sessionId) {
+        if (isConnected) {
+            statusDot.classList.add('connected');
+            statusLabel.textContent   = '연결됨 — ' + username;
+            navSessionLabel.textContent = '세션: ' + sessionId;
+            chatPanelTitle.textContent  = '채팅 — ' + sessionId;
+            btnConnect.disabled    = true;
+            btnDisconnect.disabled = false;
+            btnSend.disabled       = false;
+            msgInput.disabled      = false;
+            btnLoadHistory.disabled = false;
+            diceBtns.forEach(b => b.disabled = false);
+            msgInput.focus();
+        } else {
+            statusDot.classList.remove('connected');
+            statusLabel.textContent    = '연결 안 됨';
+            navSessionLabel.textContent = '세션: —';
+            chatPanelTitle.textContent  = '채팅 — 연결 대기 중';
+            btnConnect.disabled    = false;
+            btnDisconnect.disabled = true;
+            btnSend.disabled       = true;
+            msgInput.disabled      = true;
+            btnLoadHistory.disabled = true;
+            diceBtns.forEach(b => b.disabled = true);
+        }
+    }
+
+    function showToast(message, type = 'info') {
+        const toast = document.createElement('div');
+        toast.className = 'toast toast--' + type;
+        toast.textContent = message;
+        toastContainer.appendChild(toast);
+        setTimeout(() => toast.remove(), 4000);
+    }
+
+    function formatTime(isoOrDate) {
+        try {
+            // Handle LocalDateTime array format from Java: [2024,5,24,12,30,0,0]
+            if (Array.isArray(isoOrDate)) {
+                const [y, mo, d, h, mi] = isoOrDate;
+                return `${String(h).padStart(2,'0')}:${String(mi).padStart(2,'0')}`;
+            }
+            const d = new Date(isoOrDate);
+            return d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+        } catch {
+            return '';
+        }
+    }
+
+    function escapeHtml(str) {
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    // ── Event listeners ───────────────────────────────────────────────────
+    btnConnect.addEventListener('click', connect);
+    btnDisconnect.addEventListener('click', disconnect);
+    btnSend.addEventListener('click', sendMessage);
+    btnLoadHistory.addEventListener('click', loadHistory);
+    btnClearMessages.addEventListener('click', () => {
+        messageList.innerHTML = '';
+        messageCount = 0;
+        msgCountEl.textContent = '0 메시지';
+    });
+
+    msgInput.addEventListener('keydown', e => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    });
+
+    diceBtns.forEach(btn => {
+        btn.addEventListener('click', () => rollDice(btn.dataset.dice));
+    });
+</script>
+
+</body>
+</html>

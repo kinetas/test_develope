@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="ko"
+      xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: layout(
+          title     = '맵 목록',
+          sidebar   = null,
+          content   = ~{::content}
+      )}">
+<body>
+
+<!-- ══════════════════════════════════════════════
+     MAP LIST — CONTENT FRAGMENT
+     ══════════════════════════════════════════════ -->
+<th:block th:fragment="content">
+
+  <!-- Page header -->
+  <header class="page-header mb-6"
+          style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:1rem;">
+    <div>
+      <h1 class="page-title glitch-on-hover" data-text="MY MAPS">MY MAPS</h1>
+      <p class="text-muted text-sm">내가 제작한 맵을 관리하세요.</p>
+    </div>
+    <a class="btn btn--primary" th:href="@{/maps/editor}">
+      + NEW MAP
+    </a>
+  </header>
+
+  <!-- Tab: My Maps / Public Maps -->
+  <nav class="tab-nav mb-6" style="display:flex;gap:.5rem;border-bottom:1px solid var(--border-dim);padding-bottom:.5rem;">
+    <button class="btn btn--ghost btn--sm tab-btn tab-btn--active"
+            data-tab="my-maps" onclick="switchTab('my-maps')">MY MAPS</button>
+    <button class="btn btn--ghost btn--sm tab-btn"
+            data-tab="public-maps" onclick="switchTab('public-maps')">PUBLIC MAPS</button>
+  </nav>
+
+  <!-- ── MY MAPS GRID ── -->
+  <section id="tab-my-maps">
+
+    <!-- Server-side render (Thymeleaf) -->
+    <div th:if="${myMaps != null and !#lists.isEmpty(myMaps)}"
+         class="card-grid"
+         style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:1rem;">
+
+      <article th:each="map : ${myMaps}"
+               class="panel panel--dark map-card"
+               style="padding:1.25rem;display:flex;flex-direction:column;gap:.75rem;
+                      border:1px solid var(--border-dim);border-radius:6px;
+                      transition:border-color .2s;"
+               onmouseover="this.style.borderColor='var(--neon-cyan,#00f5ff)'"
+               onmouseout="this.style.borderColor='var(--border-dim)'">
+
+        <!-- Map title -->
+        <h2 class="text-sm ls-wider"
+            style="font-family:'Orbitron',sans-serif;color:var(--neon-cyan,#00f5ff);
+                   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"
+            th:text="${map.title}">MAP TITLE</h2>
+
+        <!-- Meta info -->
+        <div style="display:flex;flex-direction:column;gap:.25rem;">
+          <span class="text-xs text-muted"
+                th:text="'SIZE: ' + ${map.width} + ' x ' + ${map.height}">
+            SIZE: 20 x 15
+          </span>
+          <span class="text-xs text-muted"
+                th:text="'UPDATED: ' + ${#temporals.format(map.updatedAt,'yyyy-MM-dd')}">
+            UPDATED: 2026-01-01
+          </span>
+          <span th:if="${map.isPublic}"
+                class="text-xs"
+                style="color:var(--neon-green,#00ff88);">PUBLIC</span>
+          <span th:unless="${map.isPublic}"
+                class="text-xs text-muted">PRIVATE</span>
+        </div>
+
+        <!-- Actions -->
+        <div style="display:flex;gap:.5rem;margin-top:auto;">
+          <a class="btn btn--primary btn--sm"
+             style="flex:1;text-align:center;"
+             th:href="@{/maps/editor(id=${map.id})}">EDIT</a>
+          <button class="btn btn--ghost btn--sm"
+                  style="flex:1;"
+                  th:onclick="'deleteMap(' + ${map.id} + ',\'' + ${map.title} + '\')'">
+            DELETE
+          </button>
+        </div>
+
+      </article>
+
+    </div>
+
+    <!-- Empty state -->
+    <div th:if="${myMaps == null or #lists.isEmpty(myMaps)}"
+         id="my-maps-empty"
+         style="text-align:center;padding:4rem 2rem;">
+      <p class="text-muted mb-4">아직 제작한 맵이 없습니다.</p>
+      <a class="btn btn--primary" th:href="@{/maps/editor}">첫 맵 만들기</a>
+    </div>
+
+    <!-- JS-rendered card grid (fallback when Thymeleaf model is not populated) -->
+    <div id="my-maps-js-grid"
+         class="card-grid"
+         style="display:none;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:1rem;"></div>
+
+  </section>
+
+  <!-- ── PUBLIC MAPS GRID ── -->
+  <section id="tab-public-maps" style="display:none;">
+    <div id="public-maps-js-grid"
+         class="card-grid"
+         style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:1rem;">
+      <p class="text-muted text-sm">불러오는 중...</p>
+    </div>
+  </section>
+
+</th:block>
+
+<!-- ══════════════════════════════════════════════
+     PAGE SCRIPTS
+     ══════════════════════════════════════════════ -->
+<th:block th:fragment="pageScripts">
+<script th:inline="javascript">
+(function () {
+  'use strict';
+
+  /* ── Tab switching ── */
+  window.switchTab = function (tabId) {
+    document.querySelectorAll('[id^="tab-"]').forEach(el => el.style.display = 'none');
+    document.getElementById('tab-' + tabId).style.display = '';
+
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      const active = btn.dataset.tab === tabId;
+      btn.classList.toggle('tab-btn--active', active);
+      btn.classList.toggle('btn--primary',     active);
+      btn.classList.toggle('btn--ghost',       !active);
+    });
+
+    if (tabId === 'public-maps') loadPublicMaps();
+  };
+
+  /* ── Delete map ── */
+  window.deleteMap = async function (id, title) {
+    if (!confirm('"' + title + '" 맵을 삭제할까요? 이 작업은 되돌릴 수 없습니다.')) return;
+
+    try {
+      const resp = await fetch('/api/maps/' + id, {
+        method: 'DELETE',
+        headers: { 'Authorization': 'Bearer ' + getJwt() },
+      });
+      if (!resp.ok) throw new Error('삭제 실패: ' + resp.status);
+      /* Remove card from DOM */
+      location.reload();
+    } catch (err) {
+      alert('삭제 오류: ' + err.message);
+    }
+  };
+
+  /* ── Load public maps via API ── */
+  async function loadPublicMaps() {
+    const grid = document.getElementById('public-maps-js-grid');
+    grid.innerHTML = '<p class="text-muted text-sm">불러오는 중...</p>';
+    try {
+      const resp = await fetch('/api/maps/public');
+      if (!resp.ok) throw new Error(resp.statusText);
+      const maps = await resp.json();
+
+      if (!maps.length) {
+        grid.innerHTML = '<p class="text-muted text-sm">공개된 맵이 없습니다.</p>';
+        return;
+      }
+
+      grid.style.display = 'grid';
+      grid.innerHTML = maps.map(m => `
+        <article class="panel panel--dark map-card"
+                 style="padding:1.25rem;display:flex;flex-direction:column;gap:.75rem;
+                        border:1px solid var(--border-dim);border-radius:6px;">
+          <h2 style="font-family:'Orbitron',sans-serif;color:var(--neon-cyan,#00f5ff);
+                     font-size:.8rem;letter-spacing:.1em;
+                     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+            ${escHtml(m.title)}
+          </h2>
+          <div style="display:flex;flex-direction:column;gap:.25rem;">
+            <span class="text-xs text-muted">SIZE: ${m.width} x ${m.height}</span>
+            <span class="text-xs text-muted">BY: ${escHtml(m.ownerUsername)}</span>
+            <span class="text-xs text-muted">UPDATED: ${m.updatedAt ? m.updatedAt.substring(0,10) : '-'}</span>
+          </div>
+          <a class="btn btn--ghost btn--sm" href="/maps/editor?id=${m.id}" style="text-align:center;">
+            VIEW / EDIT
+          </a>
+        </article>
+      `).join('');
+    } catch (err) {
+      grid.innerHTML = '<p class="text-muted text-sm">불러오기 실패: ' + err.message + '</p>';
+    }
+  }
+
+  /* ── Helpers ── */
+  function getJwt() {
+    return localStorage.getItem('jwt') || sessionStorage.getItem('jwt') || '';
+  }
+
+  function escHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+}());
+</script>
+
+<style>
+  .tab-btn--active { box-shadow: 0 0 6px var(--neon-cyan, #00f5ff); }
+  .map-card { transition: border-color .2s, box-shadow .2s; }
+  .map-card:hover { box-shadow: 0 0 12px rgba(0,245,255,0.15); }
+</style>
+</th:block>
+
+</body>
+</html>

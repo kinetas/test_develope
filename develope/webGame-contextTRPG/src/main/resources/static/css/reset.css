@@ -1,0 +1,160 @@
+/* =============================================================
+   CSS RESET / NORMALIZE — reset.css
+   Context TRPG Web Game
+   ============================================================= */
+
+/* ── Box Sizing ── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ── Root & Body ── */
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+  text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
+  tab-size: 4;
+}
+
+body {
+  min-height: 100vh;
+  line-height: var(--lh-base);
+  font-family: var(--font-ui);
+  font-size: var(--fs-base);
+  color: var(--text-primary);
+  background-color: var(--bg-deep);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* ── Typography Resets ── */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  line-height: var(--lh-tight);
+  color: var(--text-white);
+}
+
+p { line-height: var(--lh-base); }
+
+a {
+  color: var(--neon-cyan);
+  text-decoration: none;
+  transition: color var(--transition-fast),
+              text-shadow var(--transition-fast);
+}
+
+a:hover {
+  color: var(--text-white);
+  text-shadow: var(--glow-cyan);
+}
+
+a:focus-visible {
+  outline: 2px solid var(--neon-cyan);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* ── Media ── */
+img, video, svg {
+  display: block;
+  max-width: 100%;
+}
+
+img { height: auto; }
+
+/* ── Lists ── */
+ul, ol { list-style: none; }
+
+/* ── Form Resets ── */
+button, input, select, textarea {
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: none;
+  outline: none;
+}
+
+button { cursor: pointer; }
+
+input, textarea, select {
+  width: 100%;
+}
+
+fieldset {
+  border: none;
+  padding: 0;
+}
+
+/* ── Table Resets ── */
+table {
+  border-collapse: collapse;
+  border-spacing: 0;
+  width: 100%;
+}
+
+/* ── Misc ── */
+hr {
+  border: none;
+  border-top: 1px solid var(--border-default);
+  margin: var(--sp-4) 0;
+}
+
+code, pre, kbd, samp {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+
+pre {
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+abbr[title] {
+  text-decoration: underline dotted;
+  cursor: help;
+}
+
+strong, b { font-weight: 700; }
+em, i     { font-style: italic; }
+
+sub, sup {
+  font-size: 0.75em;
+  line-height: 0;
+  position: relative;
+  vertical-align: baseline;
+}
+sub { bottom: -0.25em; }
+sup { top: -0.5em; }
+
+/* ── Scrollbar (Webkit) ── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-void);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--neon-cyan-dim);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--neon-cyan);
+}
+
+/* ── Selection ── */
+::selection {
+  background: rgba(0, 245, 255, 0.25);
+  color: var(--text-white);
+}

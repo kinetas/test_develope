@@ -1,0 +1,110 @@
+TASK-008 완료 보고서 — TRPG 공유 페이지 구현
+=====================================================
+작성일: 2026-05-24
+담당: Backend AI
+
+────────────────────────────────────────────────
+1. 생성 파일 목록
+────────────────────────────────────────────────
+
+[엔티티 / 모델]
+- src/main/java/com/trpg/model/ContentType.java
+  · 공유 콘텐츠 타입 Enum: RULESET, CHARACTER_TEMPLATE, MAP, MIXED
+
+- src/main/java/com/trpg/model/SharedContent.java
+  · JPA 엔티티 (shared_contents 테이블)
+  · 필드: id, title, description(@Lob), author(ManyToOne→User),
+           contentType(Enum), linkedSheets(TEXT), linkedMaps(TEXT),
+           downloadCount(int,default 0), likeCount(int,default 0),
+           createdAt, updatedAt
+  · @PrePersist/@PreUpdate 타임스탬프 자동 설정
+
+[Repository]
+- src/main/java/com/trpg/repository/SharedContentRepository.java
+  · findAllByOrderByCreatedAtDesc
+  · findByAuthor(User)
+  · findByContentType(ContentType)
+  · findTop10ByOrderByDownloadCountDesc
+
+[DTO]
+- src/main/java/com/trpg/dto/share/SharedContentDTO.java
+  · 전체 응답 DTO (id, title, description, authorUsername, contentType,
+    linkedSheets, linkedMaps, downloadCount, likeCount, createdAt, updatedAt)
+
+- src/main/java/com/trpg/dto/share/SharedContentRequest.java
+  · 생성 요청 DTO (title, description, contentType, linkedSheets, linkedMaps)
+
+- src/main/java/com/trpg/dto/share/SharedContentSummary.java
+  · 목록용 요약 DTO (id, title, contentType, authorUsername,
+    downloadCount, likeCount, createdAt)
+
+[Service]
+- src/main/java/com/trpg/service/SharedContentService.java
+  · create(SharedContentRequest, User) → SharedContentDTO
+  · delete(Long, User) — 작성자 권한 체크
+  · getById(Long) → SharedContentDTO + downloadCount++
+  · getAll() → List<SharedContentSummary> (최신순)
+  · getByType(ContentType) → List<SharedContentSummary>
+  · getPopular() → List<SharedContentSummary> (top 10 다운로드순)
+  · getMyContent(User) → List<SharedContentSummary>
+  · like(Long) — likeCount++
+
+[Controller]
+- src/main/java/com/trpg/controller/SharedContentController.java
+  · @RestController, @RequestMapping("/api/share")
+  · POST   /api/share          — 공유 등록 (인증 필요)
+  · GET    /api/share          — 전체/타입별 목록 (contentType 쿼리 파라미터)
+  · GET    /api/share/popular  — 인기 목록
+  · GET    /api/share/my       — 내 공유 목록 (인증 필요)
+  · GET    /api/share/{id}     — 상세 조회 + downloadCount 증가
+  · DELETE /api/share/{id}     — 삭제 (인증 필요, 작성자만)
+  · POST   /api/share/{id}/like — 좋아요
+
+- src/main/java/com/trpg/controller/ShareViewController.java
+  · @Controller, @RequestMapping("/share")
+  · GET /share     — share-list.html 서빙 (allContents, popularContents 모델 전달)
+  · GET /share/new — share-create.html 서빙
+
+[View 템플릿]
+- src/main/resources/templates/share-list.html
+  · layout.html fragment 기반 사이버펑크 UI
+  · HOT & POPULAR 섹션 (서버사이드 preload)
+  · 타입 필터 탭 (전체/RULESET/CHARACTER/MAP/MIXED) — lazy fetch
+  · 콘텐츠 카드 그리드 (제목, 작성자, 타입 뱃지, 다운로드/좋아요 수)
+  · 로그인 시 MY SHARES 테이블 표시 (fetch /api/share/my)
+  · 삭제 확인 모달
+
+- src/main/resources/templates/share-create.html
+  · layout.html fragment 기반
+  · 제목/설명 입력 폼
+  · 콘텐츠 타입 라디오 선택 (4종 카드 UI)
+  · 내 캐릭터 시트 다중 선택 (fetch /api/characters/my)
+  · 내 맵 다중 선택 (fetch /api/maps/my)
+  · 선택 카운트 뱃지 실시간 업데이트
+  · 클라이언트사이드 유효성 검사 후 POST /api/share
+
+[수정 파일]
+- src/main/java/com/trpg/config/SecurityConfig.java
+  · PUBLIC_PATHS에 추가:
+    /share, /share/new (View 페이지 공개 접근)
+    /api/share, /api/share/popular, /api/share/* (공개 읽기)
+
+────────────────────────────────────────────────
+2. 설계 결정 사항
+────────────────────────────────────────────────
+- downloadCount: 상세 조회(GET /api/share/{id}) 시 자동 증가. 별도 download API 불필요.
+- linkedSheets / linkedMaps: JSON 배열 문자열("[1,2,3]") 저장. 엔티티 Join 없이
+  가볍게 참조만 저장하는 방식으로, 조회 시 프론트엔드가 파싱하여 활용.
+- 공유 목록 페이지는 서버사이드 렌더링(전체+인기)과 클라이언트사이드 lazy fetch(타입별)
+  혼합 방식 적용.
+- 인증이 없는 사용자도 공유 목록/상세 열람 가능(public read), 등록/삭제/좋아요는 인증 필요.
+
+────────────────────────────────────────────────
+3. 의존성 확인
+────────────────────────────────────────────────
+- User 엔티티 (TASK-002) ✓
+- CharacterSheet 엔티티 및 /api/characters/my API (TASK-004) ✓
+- GameMap 엔티티 및 /api/maps/my API (TASK-005) ✓
+- layout.html + 사이버펑크 CSS (TASK-010) ✓
+
+STATUS: COMPLETED

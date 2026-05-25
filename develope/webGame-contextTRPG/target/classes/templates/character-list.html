@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="ko"
+      xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: layout(
+          title   = 'Characters',
+          sidebar = null,
+          content = ~{::main-content}
+      )}">
+
+<!-- ── page-level styles ── -->
+<th:block th:fragment="pageStyles">
+  <style>
+    /* ── character list extras ── */
+    .list-tab-bar {
+      display: flex;
+      gap: var(--sp-2);
+      margin-bottom: var(--sp-6);
+      border-bottom: 1px solid var(--border-default);
+      padding-bottom: 0;
+    }
+
+    .list-tab {
+      font-family: var(--font-display);
+      font-size: var(--fs-xs);
+      font-weight: 600;
+      letter-spacing: var(--ls-widest);
+      text-transform: uppercase;
+      color: var(--text-muted);
+      padding: var(--sp-3) var(--sp-5);
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+      transition: color var(--transition-base), border-color var(--transition-base);
+      background: none;
+      border-top: none;
+      border-left: none;
+      border-right: none;
+    }
+
+    .list-tab:hover { color: var(--neon-cyan); }
+
+    .list-tab--active {
+      color: var(--neon-cyan);
+      border-bottom-color: var(--neon-cyan);
+      text-shadow: var(--glow-soft);
+    }
+
+    .sheet-section { display: none; }
+    .sheet-section--active { display: block; }
+
+    /* empty state */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: var(--sp-16) var(--sp-8);
+      gap: var(--sp-4);
+      text-align: center;
+    }
+
+    .empty-state__icon {
+      width: 64px;
+      height: 64px;
+      color: var(--text-muted);
+      opacity: 0.4;
+    }
+
+    .empty-state__title {
+      font-family: var(--font-display);
+      font-size: var(--fs-lg);
+      letter-spacing: var(--ls-wider);
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .empty-state__sub {
+      font-size: var(--fs-sm);
+      color: var(--text-muted);
+      max-width: 360px;
+    }
+
+    /* row actions */
+    .row-actions {
+      display: flex;
+      gap: var(--sp-2);
+      opacity: 0;
+      transition: opacity var(--transition-fast);
+    }
+
+    .table tbody tr:hover .row-actions { opacity: 1; }
+
+    /* public badge */
+    .vis-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--sp-1);
+      font-family: var(--font-display);
+      font-size: var(--fs-xs);
+      letter-spacing: var(--ls-wide);
+      padding: 2px var(--sp-2);
+      border-radius: var(--radius-sm);
+      border: 1px solid;
+    }
+
+    .vis-badge--public  { color: var(--neon-green);  border-color: var(--neon-green);  background: rgba(0,255,136,0.08); }
+    .vis-badge--private { color: var(--text-muted);  border-color: var(--border-default); background: transparent; }
+
+    /* confirm modal overlay */
+    #delete-modal {
+      display: none;
+    }
+    #delete-modal.open {
+      display: flex;
+    }
+  </style>
+</th:block>
+
+<!-- ══════════════════════════════════════
+     PAGE CONTENT
+     ══════════════════════════════════════ -->
+<main th:fragment="main-content">
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <div>
+      <h1 class="page-header__title">CHARACTER SHEETS</h1>
+      <p class="page-header__subtitle">내 캐릭터 시트를 관리하고 공개 시트를 탐색하세요.</p>
+    </div>
+    <div>
+      <a class="btn btn--primary" th:href="@{/characters/new}">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2.5" aria-hidden="true">
+          <line x1="12" y1="5" x2="12" y2="19"/>
+          <line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        NEW SHEET
+      </a>
+    </div>
+  </div>
+
+  <!-- Tab bar -->
+  <div class="list-tab-bar" role="tablist">
+    <button class="list-tab list-tab--active"
+            role="tab" aria-selected="true" aria-controls="tab-my"
+            onclick="switchTab('my', this)">MY SHEETS</button>
+    <button class="list-tab"
+            role="tab" aria-selected="false" aria-controls="tab-public"
+            onclick="switchTab('public', this)">PUBLIC</button>
+  </div>
+
+  <!-- ── My Sheets ── -->
+  <section id="tab-my" class="sheet-section sheet-section--active" role="tabpanel">
+
+    <div th:if="${mySheets != null and !#lists.isEmpty(mySheets)}" class="panel">
+      <div class="panel__header">
+        <span class="panel__title">내 시트 목록</span>
+        <span class="badge badge--cyan" th:text="${#lists.size(mySheets)} + ' SHEETS'">0 SHEETS</span>
+      </div>
+      <div class="panel__body" style="padding:0;">
+        <div class="table-wrapper" style="border:none;border-radius:0;">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>캐릭터명</th>
+                <th>공개</th>
+                <th>연결 파일</th>
+                <th>수정일</th>
+                <th style="text-align:right;">작업</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr th:each="sheet, stat : ${mySheets}">
+                <td class="text-muted" style="font-family:var(--font-mono);"
+                    th:text="${stat.count}">1</td>
+                <td>
+                  <a th:href="@{/characters/{id}(id=${sheet.id})}"
+                     style="color:var(--neon-cyan);font-family:var(--font-display);
+                            font-size:var(--fs-sm);letter-spacing:var(--ls-wide);"
+                     th:text="${sheet.name}">캐릭터명</a>
+                </td>
+                <td>
+                  <span th:if="${sheet.public}"
+                        class="vis-badge vis-badge--public">PUBLIC</span>
+                  <span th:unless="${sheet.public}"
+                        class="vis-badge vis-badge--private">PRIVATE</span>
+                </td>
+                <td style="font-family:var(--font-mono);font-size:var(--fs-xs);">
+                  <span th:if="${sheet.linkedFileId != null}"
+                        style="color:var(--neon-purple);"
+                        th:text="'#' + ${sheet.linkedFileId}">—</span>
+                  <span th:unless="${sheet.linkedFileId != null}"
+                        style="color:var(--text-muted);">—</span>
+                </td>
+                <td style="font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--text-muted);"
+                    th:text="${#temporals.format(sheet.updatedAt,'yyyy-MM-dd HH:mm')}">—</td>
+                <td>
+                  <div class="row-actions" style="justify-content:flex-end;">
+                    <a th:href="@{/characters/{id}/edit(id=${sheet.id})}"
+                       class="btn btn--ghost btn--sm">EDIT</a>
+                    <button type="button"
+                            class="btn btn--danger btn--sm"
+                            th:onclick="|openDeleteModal(${sheet.id}, '[[${sheet.name}]]')|">
+                      DEL
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Empty state -->
+    <div th:if="${mySheets == null or #lists.isEmpty(mySheets)}" class="empty-state">
+      <svg class="empty-state__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1" aria-hidden="true">
+        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+        <line x1="9" y1="9" x2="15" y2="9"/>
+        <line x1="9" y1="13" x2="15" y2="13"/>
+        <line x1="9" y1="17" x2="12" y2="17"/>
+      </svg>
+      <div class="empty-state__title">NO SHEETS</div>
+      <p class="empty-state__sub">아직 생성된 캐릭터 시트가 없습니다. 첫 번째 시트를 만들어보세요.</p>
+      <a class="btn btn--primary" th:href="@{/characters/new}">NEW SHEET</a>
+    </div>
+
+  </section>
+
+  <!-- ── Public Sheets ── -->
+  <section id="tab-public" class="sheet-section" role="tabpanel">
+
+    <div th:if="${publicSheets != null and !#lists.isEmpty(publicSheets)}" class="panel">
+      <div class="panel__header">
+        <span class="panel__title">공개 캐릭터 시트</span>
+        <span class="badge badge--purple" th:text="${#lists.size(publicSheets)} + ' PUBLIC'">0 PUBLIC</span>
+      </div>
+      <div class="panel__body" style="padding:0;">
+        <div class="table-wrapper" style="border:none;border-radius:0;">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>캐릭터명</th>
+                <th>소유자</th>
+                <th>수정일</th>
+                <th style="text-align:right;">열람</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr th:each="sheet, stat : ${publicSheets}">
+                <td class="text-muted" style="font-family:var(--font-mono);"
+                    th:text="${stat.count}">1</td>
+                <td>
+                  <a th:href="@{/characters/{id}(id=${sheet.id})}"
+                     style="color:var(--neon-cyan);font-family:var(--font-display);
+                            font-size:var(--fs-sm);letter-spacing:var(--ls-wide);"
+                     th:text="${sheet.name}">캐릭터명</a>
+                </td>
+                <td style="font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--text-secondary);"
+                    th:text="${sheet.ownerUsername}">—</td>
+                <td style="font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--text-muted);"
+                    th:text="${#temporals.format(sheet.updatedAt,'yyyy-MM-dd HH:mm')}">—</td>
+                <td>
+                  <div class="row-actions" style="justify-content:flex-end;">
+                    <a th:href="@{/characters/{id}(id=${sheet.id})}"
+                       class="btn btn--ghost btn--sm">VIEW</a>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Empty state -->
+    <div th:if="${publicSheets == null or #lists.isEmpty(publicSheets)}" class="empty-state">
+      <svg class="empty-state__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="1" aria-hidden="true">
+        <circle cx="11" cy="11" r="8"/>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <div class="empty-state__title">NO PUBLIC SHEETS</div>
+      <p class="empty-state__sub">아직 공개된 캐릭터 시트가 없습니다.</p>
+    </div>
+
+  </section>
+
+  <!-- ── Delete confirm modal ── -->
+  <div id="delete-modal" class="modal-backdrop" role="dialog"
+       aria-modal="true" aria-labelledby="delete-modal-title">
+    <div class="modal modal--sm">
+      <div class="modal__header">
+        <h2 class="modal__title" id="delete-modal-title">DELETE SHEET</h2>
+        <button class="modal__close" onclick="closeDeleteModal()" aria-label="닫기">&times;</button>
+      </div>
+      <div class="modal__body">
+        <p class="text-secondary" style="font-size:var(--fs-sm);line-height:var(--lh-base);">
+          <strong id="delete-sheet-name" style="color:var(--neon-pink);"></strong>
+          시트를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
+        </p>
+      </div>
+      <div class="modal__footer">
+        <button class="btn btn--ghost" onclick="closeDeleteModal()">CANCEL</button>
+        <button class="btn btn--danger" id="confirm-delete-btn" onclick="confirmDelete()">DELETE</button>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ── page-level scripts ── -->
+<th:block th:fragment="pageScripts">
+  <script>
+    /* ── Tab switching ── */
+    function switchTab(name, btn) {
+      document.querySelectorAll('.sheet-section').forEach(s => s.classList.remove('sheet-section--active'));
+      document.querySelectorAll('.list-tab').forEach(b => {
+        b.classList.remove('list-tab--active');
+        b.setAttribute('aria-selected', 'false');
+      });
+      document.getElementById('tab-' + name).classList.add('sheet-section--active');
+      btn.classList.add('list-tab--active');
+      btn.setAttribute('aria-selected', 'true');
+    }
+
+    /* ── Delete modal ── */
+    let pendingDeleteId = null;
+
+    function openDeleteModal(id, name) {
+      pendingDeleteId = id;
+      document.getElementById('delete-sheet-name').textContent = name;
+      document.getElementById('delete-modal').classList.add('open');
+    }
+
+    function closeDeleteModal() {
+      pendingDeleteId = null;
+      document.getElementById('delete-modal').classList.remove('open');
+    }
+
+    async function confirmDelete() {
+      if (!pendingDeleteId) return;
+      const btn = document.getElementById('confirm-delete-btn');
+      btn.disabled = true;
+      btn.textContent = '...';
+
+      try {
+        const resp = await fetch('/api/characters/' + pendingDeleteId, { method: 'DELETE' });
+        if (!resp.ok) throw new Error('삭제 실패 (HTTP ' + resp.status + ')');
+        closeDeleteModal();
+        window.location.reload();
+      } catch (e) {
+        btn.disabled  = false;
+        btn.textContent = 'DELETE';
+        alert('오류: ' + e.message);
+      }
+    }
+
+    /* close modal on backdrop click */
+    document.getElementById('delete-modal').addEventListener('click', function(e) {
+      if (e.target === this) closeDeleteModal();
+    });
+  </script>
+</th:block>
+</html>

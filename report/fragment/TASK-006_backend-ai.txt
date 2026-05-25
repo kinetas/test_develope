@@ -1,0 +1,133 @@
+================================================================
+TASK-006 완료 보고서 — Backend AI
+실시간 채팅 기능 구현 (WebSocket / STOMP)
+작성일: 2026-05-24
+================================================================
+
+## 작업 범위
+
+TASK-006: WebSocket/STOMP 기반 실시간 채팅 기능 전체 구현
+
+의존 완료 태스크:
+  - TASK-001: 기반 구조 (Spring Boot 프로젝트, 패키지 레이아웃)
+  - TASK-002: JWT 인증 (JwtUtil, JwtAuthenticationFilter, SecurityConfig)
+
+================================================================
+## 생성된 파일 목록 (9개)
+================================================================
+
+1. model/MessageType.java
+   - 위치: src/main/java/com/trpg/model/MessageType.java
+   - 내용: CHAT, JOIN, LEAVE, DICE, SYSTEM 5가지 메시지 유형 enum
+
+2. model/ChatMessage.java
+   - 위치: src/main/java/com/trpg/model/ChatMessage.java
+   - 내용: JPA @Entity, 필드(id/sessionId/sender/content/messageType/sentAt)
+           @PrePersist 자동 타임스탬프, (sessionId, sentAt) 복합 인덱스
+
+3. repository/ChatMessageRepository.java
+   - 위치: src/main/java/com/trpg/repository/ChatMessageRepository.java
+   - 내용: findBySessionIdOrderBySentAtAsc
+           findBySessionIdAndSentAtAfterOrderBySentAtAsc (두 쿼리 메서드)
+
+4. config/WebSocketConfig.java
+   - 위치: src/main/java/com/trpg/config/WebSocketConfig.java
+   - 내용: @EnableWebSocketMessageBroker
+           STOMP 엔드포인트 /ws (SockJS fallback 포함)
+           SimpleBroker: /topic (broadcast), /queue (1:1)
+           App prefix: /app
+
+5. dto/chat/ChatMessageDTO.java
+   - 위치: src/main/java/com/trpg/dto/chat/ChatMessageDTO.java
+   - 내용: sessionId, sender, content, messageType, sentAt 필드, Lombok
+
+6. dto/chat/DiceRollDTO.java
+   - 위치: src/main/java/com/trpg/dto/chat/DiceRollDTO.java
+   - 내용: diceType(String), result(int), roller(String) 필드, Lombok
+
+7. service/ChatService.java
+   - 위치: src/main/java/com/trpg/service/ChatService.java
+   - 내용:
+     * saveMessage(ChatMessageDTO) → ChatMessage (트랜잭션 저장)
+     * getSessionHistory(sessionId) → List<ChatMessageDTO>
+     * getSessionHistoryAfter(sessionId, after) → List<ChatMessageDTO>
+     * rollDice(diceType, username) → DiceRollDTO
+       - "d4"~"d20", "d100" 등 dN 형식 파싱, Random(1..N) 로직
+
+8. controller/ChatController.java
+   - 위치: src/main/java/com/trpg/controller/ChatController.java
+   - STOMP 핸들러:
+     * /app/chat.send  → 메시지 저장 + /topic/session/{id} 브로드캐스트
+     * /app/chat.join  → 입장 메시지 저장 + 브로드캐스트
+     * /app/chat.leave → 퇴장 메시지 저장 + 브로드캐스트
+     * /app/dice.roll  → rollDice() 호출 + /topic/session/{id} 브로드캐스트
+                         + /topic/session/{id}/dice 구조체 브로드캐스트
+   - REST:
+     * GET /api/chat/history/{sessionId} → List<ChatMessageDTO>
+     * GET /chat → Thymeleaf chat.html 뷰
+
+9. resources/templates/chat.html
+   - 위치: src/main/resources/templates/chat.html
+   - 내용:
+     * Thymeleaf HTML5 템플릿
+     * SockJS + @stomp/stompjs CDN (7.x)
+     * 사이버펑크 스타일: cyberpunk-panel, neon-btn (cyan/purple/pink/green)
+     * 기존 CSS 변수 시스템(variables.css) 100% 활용
+     * 채팅창(스크롤 메시지 목록) + 입력창 + 전송 버튼
+     * 주사위 버튼 6종: d4, d6, d8, d10, d12, d20
+     * 사용자 이름 / 세션 ID 입력 → 접속/해제 버튼
+     * 메시지 타입별 색상 구분 (CHAT/JOIN/LEAVE/DICE/SYSTEM)
+     * 연결 상태 표시 (펄스 애니메이션 도트)
+     * 채팅 기록 REST 조회 버튼
+     * Enter 키 전송 지원
+     * Toast 알림 시스템
+
+================================================================
+## 수정된 파일 (1개)
+================================================================
+
+- config/SecurityConfig.java
+  변경 내용: PUBLIC_PATHS에 WebSocket(/ws/**), 채팅 뷰(/chat/**) 추가
+  이유: SockJS 핸드쉐이크와 채팅 페이지 접근 허용 (JWT 없이도 접근 가능)
+
+================================================================
+## 기술 구현 세부사항
+================================================================
+
+WebSocket 프레임워크:
+  - spring-boot-starter-websocket (pom.xml에 이미 선언됨)
+  - STOMP 프로토콜, SockJS 폴백 (IE 등 구형 브라우저 지원)
+
+메시지 흐름:
+  클라이언트 → /app/chat.send
+  → ChatController.handleChatMessage()
+  → ChatService.saveMessage() (H2 DB 저장)
+  → SimpMessagingTemplate.convertAndSend("/topic/session/{id}")
+  → 모든 구독 클라이언트에 메시지 전달
+
+주사위 로직:
+  "d20" → parseDiceSides() → 20 → Random.nextInt(20)+1 → 1~20
+  지원: d4, d6, d8, d10, d12, d20, d100 (임의 dN 모두 동작)
+
+보안:
+  - Principal 기반 sender 강제 (서버 측에서 덮어씀)
+  - WebSocket 엔드포인트는 PUBLIC (JWT 없이 접속 가능)
+  - 향후 개선: STOMP CONNECT 시 JWT 토큰 헤더 검증 추가 가능
+
+================================================================
+## 확인 항목
+================================================================
+
+[완료] MessageType enum 5종
+[완료] ChatMessage JPA 엔티티 (인덱스 포함)
+[완료] ChatMessageRepository (2개 쿼리 메서드)
+[완료] WebSocketConfig STOMP 설정
+[완료] ChatMessageDTO / DiceRollDTO
+[완료] ChatService (저장/조회/주사위)
+[완료] ChatController STOMP 4개 + REST 1개
+[완료] chat.html Thymeleaf + 사이버펑크 스타일 UI
+[완료] SecurityConfig PUBLIC_PATHS WebSocket/채팅 추가
+
+================================================================
+TASK-006 완료 — Backend AI
+================================================================

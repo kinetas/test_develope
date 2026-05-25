@@ -1,0 +1,89 @@
+===========================================================================================
+TASK-004 완료 보고서 — 캐릭터 시트 제작 기능 (Model / Controller / View)
+Backend AI | 2026-05-24
+===========================================================================================
+
+■ 작업 개요
+  캐릭터 시트 전체 CRUD 기능을 구현하였습니다.
+  엔티티 / 레포지토리 / DTO / 서비스 / 컨트롤러 / Thymeleaf View 8개 파일 신규 생성.
+
+===========================================================================================
+■ 생성 파일 목록
+===========================================================================================
+
+1. model/CharacterSheet.java
+   - @Entity, @Table("character_sheets")
+   - 필드: id, name, owner(ManyToOne→User), sheetData(@Lob TEXT),
+           linkedFile(ManyToOne→UploadedFile nullable), isPublic, createdAt, updatedAt
+   - @PrePersist / @PreUpdate 로 타임스탬프 자동 관리
+
+2. repository/CharacterSheetRepository.java
+   - findByOwner(User) → List
+   - findByOwnerAndId(User, Long) → Optional  (소유권 확인용)
+   - findByIsPublicTrue() → List
+
+3. dto/character/CharacterSheetDTO.java
+   - id, name, sheetData, linkedFileId, isPublic, ownerUsername, createdAt, updatedAt
+
+4. dto/character/CharacterSheetRequest.java
+   - name, sheetData, linkedFileId, isPublic
+
+5. service/CharacterSheetService.java
+   - create(request, owner)   : 새 시트 생성
+   - update(id, request, user): 소유자 검증 후 수정
+   - delete(id, user)         : 소유자 검증 후 삭제
+   - getById(id, user)        : 공개 시트는 누구나 / 비공개는 소유자만
+   - getMySheets(user)        : 내 시트 목록
+   - getPublicSheets()        : 공개 시트 목록
+   - private toDTO() / resolveLinkedFile() 헬퍼 메서드 포함
+
+6. controller/CharacterSheetController.java
+   - POST   /api/characters        → create (201 Created + Location 헤더)
+   - GET    /api/characters/my     → getMySheets
+   - GET    /api/characters/public → getPublicSheets (인증 불요)
+   - GET    /api/characters/{id}   → getById (공개=비인증 가능, 비공개=소유자)
+   - PUT    /api/characters/{id}   → update
+   - DELETE /api/characters/{id}   → delete (204 No Content)
+   - resolveUser / resolveUserOptional 헬퍼로 UserDetails → User 변환
+
+7. resources/templates/character-editor.html
+   - Thymeleaf layout fragment 적용 (layout.html 재사용)
+   - 캐릭터 이름 입력 (#char-name)
+   - JSON 에디터 영역 (textarea id="sheet-data-editor") — CodeMirror 연동 준비
+   - 실시간 JSON 유효성 검사 + FORMAT / CLEAR 버튼
+   - Excel / Script 파일 업로드 → /api/files/upload 연동 후 linkedFileId 세팅
+   - 공개/비공개 토글 스위치
+   - REST API 기반 저장 (fetch PUT/POST, 완료 후 /characters 리다이렉트)
+   - 편집 모드(editMode=true) / 신규 모드 분기
+   - 사이버펑크 UI: card, btn, form-input, toggle-switch, status-bar 등 CSS 변수 활용
+
+8. resources/templates/character-list.html
+   - MY SHEETS / PUBLIC 탭 전환
+   - 내 시트 테이블: 이름, 공개여부, 연결파일, 수정일, 편집/삭제 버튼
+   - 공개 시트 테이블: 이름, 소유자, 수정일, 열람 버튼
+   - 빈 상태(Empty State) UI 포함
+   - 삭제 확인 모달 (modal-backdrop / modal / modal__footer)
+   - fetch DELETE → 성공 시 페이지 새로고침
+   - 새 시트 만들기 버튼 (/characters/new)
+
+===========================================================================================
+■ 설계 결정 사항
+===========================================================================================
+
+- 소유권 검증: Service 레이어에서 findByOwnerAndId()로 단일 쿼리 소유권 + 존재 확인
+- 비공개 시트 접근: getById에서 isPublic || isOwner 조건으로 처리
+- 파일 연결: linkedFileId nullable, UploadedFileRepository 조회 후 참조 설정
+- View에서 REST API 직접 호출(fetch) 방식 채택 → JSON 응답 처리 후 SPA-like 피드백
+- JSON 에디터에 id="sheet-data-editor" 부여 → 추후 CodeMirror 교체 용이
+
+===========================================================================================
+■ 선행 작업 의존성
+===========================================================================================
+
+- TASK-001: TrpgApplication.java, 패키지 구조 — 정상 활용
+- TASK-002: User 엔티티, UserRepository, JWT — resolveUser() 에서 활용
+- TASK-003: UploadedFile 엔티티, UploadedFileRepository, /api/files/upload API — 파일 연결 기능에서 활용
+
+===========================================================================================
+■ 상태: COMPLETED
+===========================================================================================

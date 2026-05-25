@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="ko"
+      xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: layout(
+          title   = 'New Share',
+          sidebar = null,
+          content = ~{::main-content}
+      )}">
+
+<!-- ── page-level styles ── -->
+<th:block th:fragment="pageStyles">
+  <style>
+    /* ── share-create page extras ── */
+    .create-form {
+      max-width: 760px;
+    }
+
+    .form-section {
+      margin-bottom: var(--sp-8);
+    }
+
+    .form-section__title {
+      font-family: var(--font-display);
+      font-size: var(--fs-xs);
+      font-weight: 700;
+      letter-spacing: var(--ls-widest);
+      text-transform: uppercase;
+      color: var(--neon-cyan);
+      text-shadow: var(--glow-soft);
+      margin-bottom: var(--sp-4);
+      padding-bottom: var(--sp-2);
+      border-bottom: 1px solid var(--border-default);
+    }
+
+    /* Type selector */
+    .type-selector {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: var(--sp-3);
+    }
+
+    @media (min-width: 640px) {
+      .type-selector { grid-template-columns: repeat(4, 1fr); }
+    }
+
+    .type-option {
+      position: relative;
+    }
+
+    .type-option input[type="radio"] {
+      position: absolute;
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .type-option label {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: var(--sp-2);
+      padding: var(--sp-4);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: border-color var(--transition-base), background var(--transition-base);
+      text-align: center;
+    }
+
+    .type-option label:hover {
+      border-color: var(--neon-cyan);
+      background: rgba(0,245,255,0.04);
+    }
+
+    .type-option input:checked + label {
+      border-color: var(--neon-cyan);
+      background: rgba(0,245,255,0.08);
+      box-shadow: 0 0 12px rgba(0,245,255,0.15);
+    }
+
+    .type-option__icon {
+      font-size: 24px;
+      line-height: 1;
+    }
+
+    .type-option__label {
+      font-family: var(--font-display);
+      font-size: var(--fs-xs);
+      font-weight: 600;
+      letter-spacing: var(--ls-wider);
+      text-transform: uppercase;
+      color: var(--text-secondary);
+    }
+
+    /* Multi-select checkboxes for sheets / maps */
+    .link-select-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: var(--sp-3);
+      max-height: 260px;
+      overflow-y: auto;
+      padding: var(--sp-1);
+    }
+
+    .link-item {
+      position: relative;
+    }
+
+    .link-item input[type="checkbox"] {
+      position: absolute;
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .link-item label {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-3);
+      padding: var(--sp-3) var(--sp-4);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: border-color var(--transition-fast), background var(--transition-fast);
+    }
+
+    .link-item label:hover { border-color: var(--neon-cyan); background: rgba(0,245,255,0.04); }
+
+    .link-item input:checked + label {
+      border-color: var(--neon-cyan);
+      background: rgba(0,245,255,0.08);
+    }
+
+    .link-item__check {
+      width: 16px;
+      height: 16px;
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-sm);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: border-color var(--transition-fast), background var(--transition-fast);
+    }
+
+    .link-item input:checked + label .link-item__check {
+      background: var(--neon-cyan);
+      border-color: var(--neon-cyan);
+    }
+
+    .link-item input:checked + label .link-item__check::after {
+      content: '';
+      display: block;
+      width: 8px;
+      height: 5px;
+      border-left: 2px solid var(--surface-1);
+      border-bottom: 2px solid var(--surface-1);
+      transform: rotate(-45deg) translateY(-1px);
+    }
+
+    .link-item__name {
+      font-family: var(--font-display);
+      font-size: var(--fs-xs);
+      letter-spacing: var(--ls-wide);
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .no-items-msg {
+      font-family: var(--font-mono);
+      font-size: var(--fs-xs);
+      color: var(--text-muted);
+      padding: var(--sp-4);
+    }
+
+    /* submit actions */
+    .form-actions {
+      display: flex;
+      gap: var(--sp-3);
+      align-items: center;
+      padding-top: var(--sp-6);
+      border-top: 1px solid var(--border-default);
+    }
+  </style>
+</th:block>
+
+<!-- ══════════════════════════════════════
+     PAGE CONTENT
+     ══════════════════════════════════════ -->
+<main th:fragment="main-content">
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <div>
+      <h1 class="page-header__title">NEW SHARE</h1>
+      <p class="page-header__subtitle">제작한 TRPG 패키지를 커뮤니티와 공유하세요.</p>
+    </div>
+    <div>
+      <a class="btn btn--ghost" th:href="@{/share}">BACK TO LIST</a>
+    </div>
+  </div>
+
+  <!-- ── Create Form ── -->
+  <div class="create-form">
+
+    <!-- Basic Info -->
+    <div class="form-section panel">
+      <div class="panel__header">
+        <span class="panel__title form-section__title">BASIC INFO</span>
+      </div>
+      <div class="panel__body">
+
+        <div class="form-group">
+          <label class="form-label" for="title">공유 제목 <span style="color:var(--neon-pink);">*</span></label>
+          <input class="form-input" type="text" id="title" name="title"
+                 placeholder="공유할 콘텐츠의 제목을 입력하세요."
+                 maxlength="200" required autocomplete="off" />
+          <span id="title-error" class="form-hint" style="color:var(--neon-pink);display:none;">제목을 입력하세요.</span>
+        </div>
+
+        <div class="form-group" style="margin-top:var(--sp-5);">
+          <label class="form-label" for="description">설명</label>
+          <textarea class="form-input" id="description" name="description"
+                    rows="5"
+                    placeholder="콘텐츠에 대한 설명, 사용 방법, 시스템 정보 등을 적어주세요."
+                    style="resize:vertical;"></textarea>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Content Type -->
+    <div class="form-section panel">
+      <div class="panel__header">
+        <span class="panel__title form-section__title">CONTENT TYPE <span style="color:var(--neon-pink);">*</span></span>
+      </div>
+      <div class="panel__body">
+        <div class="type-selector">
+
+          <div class="type-option">
+            <input type="radio" id="type-RULESET" name="contentType" value="RULESET" />
+            <label for="type-RULESET">
+              <span class="type-option__icon">📜</span>
+              <span class="type-option__label">Ruleset</span>
+            </label>
+          </div>
+
+          <div class="type-option">
+            <input type="radio" id="type-CHARACTER_TEMPLATE" name="contentType" value="CHARACTER_TEMPLATE" />
+            <label for="type-CHARACTER_TEMPLATE">
+              <span class="type-option__icon">🧬</span>
+              <span class="type-option__label">Character</span>
+            </label>
+          </div>
+
+          <div class="type-option">
+            <input type="radio" id="type-MAP" name="contentType" value="MAP" />
+            <label for="type-MAP">
+              <span class="type-option__icon">🗺️</span>
+              <span class="type-option__label">Map</span>
+            </label>
+          </div>
+
+          <div class="type-option">
+            <input type="radio" id="type-MIXED" name="contentType" value="MIXED" />
+            <label for="type-MIXED">
+              <span class="type-option__icon">📦</span>
+              <span class="type-option__label">Mixed</span>
+            </label>
+          </div>
+
+        </div>
+        <span id="type-error" class="form-hint" style="color:var(--neon-pink);display:none;margin-top:var(--sp-2);">콘텐츠 타입을 선택하세요.</span>
+      </div>
+    </div>
+
+    <!-- Linked Character Sheets -->
+    <div class="form-section panel">
+      <div class="panel__header">
+        <span class="panel__title form-section__title">LINKED CHARACTER SHEETS</span>
+        <span class="badge badge--cyan" id="sheet-count-badge">0 SELECTED</span>
+      </div>
+      <div class="panel__body">
+        <p class="text-muted" style="font-size:var(--fs-xs);margin-bottom:var(--sp-4);">
+          이 공유에 포함할 내 캐릭터 시트를 선택하세요. (선택 사항)
+        </p>
+        <div class="link-select-grid" id="sheet-select">
+          <p class="no-items-msg">캐릭터 시트를 불러오는 중...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Linked Maps -->
+    <div class="form-section panel">
+      <div class="panel__header">
+        <span class="panel__title form-section__title">LINKED MAPS</span>
+        <span class="badge badge--purple" id="map-count-badge">0 SELECTED</span>
+      </div>
+      <div class="panel__body">
+        <p class="text-muted" style="font-size:var(--fs-xs);margin-bottom:var(--sp-4);">
+          이 공유에 포함할 내 맵을 선택하세요. (선택 사항)
+        </p>
+        <div class="link-select-grid" id="map-select">
+          <p class="no-items-msg">맵을 불러오는 중...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <div class="form-actions">
+      <button type="button" class="btn btn--primary" id="submit-btn" onclick="submitShare()">
+        PUBLISH SHARE
+      </button>
+      <a class="btn btn--ghost" th:href="@{/share}">CANCEL</a>
+      <span id="submit-status" style="font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--text-muted);display:none;"></span>
+    </div>
+
+  </div>
+  <!-- /create-form -->
+
+</main>
+
+<!-- ── page-level scripts ── -->
+<th:block th:fragment="pageScripts">
+  <script>
+    /* ── Load my character sheets ── */
+    async function loadMySheets() {
+      const container = document.getElementById('sheet-select');
+      try {
+        const res = await fetch('/api/characters/my');
+        if (!res.ok) throw new Error();
+        const sheets = await res.json();
+        if (!sheets || sheets.length === 0) {
+          container.innerHTML = '<p class="no-items-msg">연결할 캐릭터 시트가 없습니다.</p>';
+          return;
+        }
+        container.innerHTML = sheets.map(s => `
+          <div class="link-item">
+            <input type="checkbox" id="sheet-${s.id}" value="${s.id}" onchange="updateCounts()">
+            <label for="sheet-${s.id}">
+              <span class="link-item__check"></span>
+              <span class="link-item__name" title="${escHtml(s.name)}">${escHtml(s.name)}</span>
+            </label>
+          </div>
+        `).join('');
+      } catch (e) {
+        container.innerHTML = '<p class="no-items-msg">캐릭터 시트를 불러올 수 없습니다.</p>';
+      }
+    }
+
+    /* ── Load my maps ── */
+    async function loadMyMaps() {
+      const container = document.getElementById('map-select');
+      try {
+        const res = await fetch('/api/maps/my');
+        if (!res.ok) throw new Error();
+        const maps = await res.json();
+        if (!maps || maps.length === 0) {
+          container.innerHTML = '<p class="no-items-msg">연결할 맵이 없습니다.</p>';
+          return;
+        }
+        container.innerHTML = maps.map(m => `
+          <div class="link-item">
+            <input type="checkbox" id="map-${m.id}" value="${m.id}" onchange="updateCounts()">
+            <label for="map-${m.id}">
+              <span class="link-item__check"></span>
+              <span class="link-item__name" title="${escHtml(m.title)}">${escHtml(m.title)}</span>
+            </label>
+          </div>
+        `).join('');
+      } catch (e) {
+        container.innerHTML = '<p class="no-items-msg">맵을 불러올 수 없습니다.</p>';
+      }
+    }
+
+    /* ── Update selection count badges ── */
+    function updateCounts() {
+      const sheetCount = document.querySelectorAll('#sheet-select input:checked').length;
+      const mapCount   = document.querySelectorAll('#map-select input:checked').length;
+      document.getElementById('sheet-count-badge').textContent = sheetCount + ' SELECTED';
+      document.getElementById('map-count-badge').textContent   = mapCount + ' SELECTED';
+    }
+
+    /* ── Collect selected IDs as JSON array string ── */
+    function collectIds(containerSelector) {
+      const ids = Array.from(document.querySelectorAll(containerSelector + ' input:checked'))
+                       .map(cb => parseInt(cb.value));
+      return ids.length > 0 ? JSON.stringify(ids) : null;
+    }
+
+    /* ── Submit ── */
+    async function submitShare() {
+      const title = document.getElementById('title').value.trim();
+      const description = document.getElementById('description').value.trim();
+      const contentTypeEl = document.querySelector('input[name="contentType"]:checked');
+
+      // Validation
+      let valid = true;
+      document.getElementById('title-error').style.display = 'none';
+      document.getElementById('type-error').style.display  = 'none';
+
+      if (!title) {
+        document.getElementById('title-error').style.display = 'block';
+        valid = false;
+      }
+      if (!contentTypeEl) {
+        document.getElementById('type-error').style.display = 'block';
+        valid = false;
+      }
+      if (!valid) return;
+
+      const payload = {
+        title,
+        description: description || null,
+        contentType: contentTypeEl.value,
+        linkedSheets: collectIds('#sheet-select'),
+        linkedMaps:   collectIds('#map-select')
+      };
+
+      const btn    = document.getElementById('submit-btn');
+      const status = document.getElementById('submit-status');
+      btn.disabled = true;
+      btn.textContent = 'PUBLISHING...';
+      status.style.display = 'block';
+      status.textContent   = '';
+
+      try {
+        const res = await fetch('/api/share', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error('HTTP ' + res.status + ': ' + text);
+        }
+
+        const created = await res.json();
+        status.style.color = 'var(--neon-green)';
+        status.textContent = '공유가 등록되었습니다!';
+        setTimeout(() => { window.location.href = '/share'; }, 800);
+
+      } catch (e) {
+        btn.disabled = false;
+        btn.textContent = 'PUBLISH SHARE';
+        status.style.color = 'var(--neon-pink)';
+        status.textContent = '오류: ' + e.message;
+      }
+    }
+
+    function escHtml(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    /* ── Init ── */
+    document.addEventListener('DOMContentLoaded', () => {
+      loadMySheets();
+      loadMyMaps();
+    });
+  </script>
+</th:block>
+</html>

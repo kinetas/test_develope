@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="ko"
+      xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: layout(
+          title   = 'Community Share',
+          sidebar = null,
+          content = ~{::main-content}
+      )}">
+
+<!-- ── page-level styles ── -->
+<th:block th:fragment="pageStyles">
+  <style>
+    /* ── share list page extras ── */
+
+    /* Filter tabs */
+    .list-tab-bar {
+      display: flex;
+      gap: var(--sp-2);
+      margin-bottom: var(--sp-6);
+      border-bottom: 1px solid var(--border-default);
+    }
+
+    .list-tab {
+      font-family: var(--font-display);
+      font-size: var(--fs-xs);
+      font-weight: 600;
+      letter-spacing: var(--ls-widest);
+      text-transform: uppercase;
+      color: var(--text-muted);
+      padding: var(--sp-3) var(--sp-5);
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+      transition: color var(--transition-base), border-color var(--transition-base);
+      background: none;
+      border-top: none;
+      border-left: none;
+      border-right: none;
+    }
+
+    .list-tab:hover { color: var(--neon-cyan); }
+
+    .list-tab--active {
+      color: var(--neon-cyan);
+      border-bottom-color: var(--neon-cyan);
+      text-shadow: var(--glow-soft);
+    }
+
+    .share-section { display: none; }
+    .share-section--active { display: block; }
+
+    /* Content card grid */
+    .share-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: var(--sp-5);
+      margin-bottom: var(--sp-8);
+    }
+
+    .share-card {
+      background: var(--surface-2);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-lg);
+      padding: var(--sp-5);
+      display: flex;
+      flex-direction: column;
+      gap: var(--sp-3);
+      transition: border-color var(--transition-base), box-shadow var(--transition-base);
+      cursor: pointer;
+    }
+
+    .share-card:hover {
+      border-color: var(--neon-cyan);
+      box-shadow: 0 0 16px rgba(0, 245, 255, 0.12);
+    }
+
+    .share-card__header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: var(--sp-2);
+    }
+
+    .share-card__title {
+      font-family: var(--font-display);
+      font-size: var(--fs-sm);
+      font-weight: 600;
+      letter-spacing: var(--ls-wide);
+      color: var(--text-primary);
+      text-transform: uppercase;
+      line-height: var(--lh-tight);
+      flex: 1;
+    }
+
+    /* Type badges */
+    .type-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px var(--sp-2);
+      border-radius: var(--radius-sm);
+      font-family: var(--font-display);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: var(--ls-wider);
+      text-transform: uppercase;
+      border: 1px solid;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .type-badge--RULESET          { color: var(--neon-cyan);   border-color: var(--neon-cyan);   background: rgba(0,245,255,0.08); }
+    .type-badge--CHARACTER_TEMPLATE { color: var(--neon-purple); border-color: var(--neon-purple); background: rgba(188,0,255,0.08); }
+    .type-badge--MAP               { color: var(--neon-green);  border-color: var(--neon-green);  background: rgba(0,255,136,0.08); }
+    .type-badge--MIXED             { color: var(--neon-pink);   border-color: var(--neon-pink);   background: rgba(255,0,110,0.08); }
+
+    .share-card__author {
+      font-family: var(--font-mono);
+      font-size: var(--fs-xs);
+      color: var(--text-muted);
+    }
+
+    .share-card__stats {
+      display: flex;
+      gap: var(--sp-4);
+      margin-top: auto;
+      padding-top: var(--sp-3);
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    .share-stat {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-1);
+      font-family: var(--font-mono);
+      font-size: var(--fs-xs);
+      color: var(--text-muted);
+    }
+
+    .share-stat svg { opacity: 0.6; }
+
+    /* Popular section */
+    .popular-section {
+      margin-bottom: var(--sp-8);
+    }
+
+    .popular-section__title {
+      font-family: var(--font-display);
+      font-size: var(--fs-sm);
+      font-weight: 600;
+      letter-spacing: var(--ls-widest);
+      text-transform: uppercase;
+      color: var(--neon-pink);
+      text-shadow: 0 0 8px rgba(255,0,110,0.5);
+      margin-bottom: var(--sp-4);
+      display: flex;
+      align-items: center;
+      gap: var(--sp-2);
+    }
+
+    /* Popular list rows */
+    .popular-list {
+      display: flex;
+      flex-direction: column;
+      gap: var(--sp-2);
+    }
+
+    .popular-item {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-4);
+      background: var(--surface-2);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: var(--sp-3) var(--sp-4);
+      cursor: pointer;
+      transition: border-color var(--transition-fast);
+    }
+
+    .popular-item:hover { border-color: var(--neon-pink); }
+
+    .popular-item__rank {
+      font-family: var(--font-display);
+      font-size: var(--fs-lg);
+      font-weight: 900;
+      color: var(--neon-pink);
+      opacity: 0.7;
+      min-width: 32px;
+      text-align: center;
+    }
+
+    .popular-item__info { flex: 1; min-width: 0; }
+
+    .popular-item__title {
+      font-family: var(--font-display);
+      font-size: var(--fs-sm);
+      letter-spacing: var(--ls-wide);
+      text-transform: uppercase;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .popular-item__meta {
+      font-family: var(--font-mono);
+      font-size: var(--fs-xs);
+      color: var(--text-muted);
+    }
+
+    .popular-item__download {
+      font-family: var(--font-mono);
+      font-size: var(--fs-xs);
+      color: var(--neon-cyan);
+      white-space: nowrap;
+    }
+
+    /* Empty state */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: var(--sp-16) var(--sp-8);
+      gap: var(--sp-4);
+      text-align: center;
+    }
+
+    .empty-state__icon {
+      width: 64px;
+      height: 64px;
+      color: var(--text-muted);
+      opacity: 0.4;
+    }
+
+    .empty-state__title {
+      font-family: var(--font-display);
+      font-size: var(--fs-lg);
+      letter-spacing: var(--ls-wider);
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .empty-state__sub {
+      font-size: var(--fs-sm);
+      color: var(--text-muted);
+      max-width: 360px;
+    }
+
+    /* Delete modal */
+    #delete-modal { display: none; }
+    #delete-modal.open { display: flex; }
+  </style>
+</th:block>
+
+<!-- ══════════════════════════════════════
+     PAGE CONTENT
+     ══════════════════════════════════════ -->
+<main th:fragment="main-content">
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <div>
+      <h1 class="page-header__title">COMMUNITY SHARE</h1>
+      <p class="page-header__subtitle">커뮤니티가 제작한 룰셋, 캐릭터 양식, 맵을 탐색하고 공유하세요.</p>
+    </div>
+    <div>
+      <a class="btn btn--primary" th:href="@{/share/new}">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="2.5" aria-hidden="true">
+          <line x1="12" y1="5" x2="12" y2="19"/>
+          <line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        NEW SHARE
+      </a>
+    </div>
+  </div>
+
+  <!-- ── Popular Content Section ── -->
+  <div class="popular-section" th:if="${popularContents != null and !#lists.isEmpty(popularContents)}">
+    <div class="popular-section__title">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+           stroke-width="2" aria-hidden="true">
+        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+      </svg>
+      HOT &amp; POPULAR
+    </div>
+    <div class="popular-list">
+      <div th:each="item, stat : ${popularContents}"
+           class="popular-item"
+           th:onclick="|viewContent(${item.id})|">
+        <div class="popular-item__rank" th:text="${stat.count}">1</div>
+        <div class="popular-item__info">
+          <div class="popular-item__title" th:text="${item.title}">제목</div>
+          <div class="popular-item__meta">
+            <span th:text="${item.authorUsername}">author</span>
+            &nbsp;·&nbsp;
+            <span th:text="${item.contentType}">타입</span>
+          </div>
+        </div>
+        <span class="type-badge"
+              th:classappend="'type-badge--' + ${item.contentType}"
+              th:text="${item.contentType}">TYPE</span>
+        <div class="popular-item__download">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" style="vertical-align:middle;margin-right:2px;">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          <span th:text="${item.downloadCount}">0</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Filter Tabs ── -->
+  <div class="list-tab-bar" role="tablist">
+    <button class="list-tab list-tab--active"
+            role="tab" aria-selected="true" aria-controls="tab-all"
+            onclick="switchTab('all', this)">ALL</button>
+    <button class="list-tab"
+            role="tab" aria-selected="false" aria-controls="tab-RULESET"
+            onclick="switchTab('RULESET', this)">RULESET</button>
+    <button class="list-tab"
+            role="tab" aria-selected="false" aria-controls="tab-CHARACTER_TEMPLATE"
+            onclick="switchTab('CHARACTER_TEMPLATE', this)">CHARACTER</button>
+    <button class="list-tab"
+            role="tab" aria-selected="false" aria-controls="tab-MAP"
+            onclick="switchTab('MAP', this)">MAP</button>
+    <button class="list-tab"
+            role="tab" aria-selected="false" aria-controls="tab-MIXED"
+            onclick="switchTab('MIXED', this)">MIXED</button>
+  </div>
+
+  <!-- ── All Contents ── -->
+  <section id="tab-all" class="share-section share-section--active" role="tabpanel">
+    <div th:if="${allContents != null and !#lists.isEmpty(allContents)}" class="share-grid" id="grid-all">
+      <div th:each="item : ${allContents}"
+           class="share-card"
+           th:onclick="|viewContent(${item.id})|">
+        <div class="share-card__header">
+          <div class="share-card__title" th:text="${item.title}">제목</div>
+          <span class="type-badge"
+                th:classappend="'type-badge--' + ${item.contentType}"
+                th:text="${item.contentType}">TYPE</span>
+        </div>
+        <div class="share-card__author" th:text="'BY ' + ${item.authorUsername}">BY author</div>
+        <div class="share-card__stats">
+          <div class="share-stat">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            <span th:text="${item.downloadCount}">0</span>
+          </div>
+          <div class="share-stat">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+            </svg>
+            <span th:text="${item.likeCount}">0</span>
+          </div>
+          <div class="share-stat" style="margin-left:auto;">
+            <span th:text="${#temporals.format(item.createdAt,'yyyy-MM-dd')}">날짜</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div th:if="${allContents == null or #lists.isEmpty(allContents)}" class="empty-state">
+      <svg class="empty-state__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+        <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+        <polyline points="16 6 12 2 8 6"/>
+        <line x1="12" y1="2" x2="12" y2="15"/>
+      </svg>
+      <div class="empty-state__title">NO CONTENT YET</div>
+      <p class="empty-state__sub">아직 공유된 콘텐츠가 없습니다. 첫 번째 공유를 등록해보세요.</p>
+      <a class="btn btn--primary" th:href="@{/share/new}">NEW SHARE</a>
+    </div>
+  </section>
+
+  <!-- ── Filtered sections (loaded via JS fetch) ── -->
+  <section id="tab-RULESET"           class="share-section" role="tabpanel"><div class="share-grid" id="grid-RULESET"></div></section>
+  <section id="tab-CHARACTER_TEMPLATE" class="share-section" role="tabpanel"><div class="share-grid" id="grid-CHARACTER_TEMPLATE"></div></section>
+  <section id="tab-MAP"               class="share-section" role="tabpanel"><div class="share-grid" id="grid-MAP"></div></section>
+  <section id="tab-MIXED"             class="share-section" role="tabpanel"><div class="share-grid" id="grid-MIXED"></div></section>
+
+  <!-- ── My Content Tab (visible only when logged in) ── -->
+  <div th:if="${currentUser != null}" style="margin-top:var(--sp-8);">
+    <div class="panel">
+      <div class="panel__header">
+        <span class="panel__title">MY SHARES</span>
+        <a class="btn btn--ghost btn--sm" th:href="@{/share/new}">+ NEW</a>
+      </div>
+      <div class="panel__body" style="padding:0;">
+        <div id="my-content-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Delete confirm modal ── -->
+  <div id="delete-modal" class="modal-backdrop" role="dialog"
+       aria-modal="true" aria-labelledby="delete-modal-title">
+    <div class="modal modal--sm">
+      <div class="modal__header">
+        <h2 class="modal__title" id="delete-modal-title">DELETE SHARE</h2>
+        <button class="modal__close" onclick="closeDeleteModal()" aria-label="닫기">&times;</button>
+      </div>
+      <div class="modal__body">
+        <p class="text-secondary" style="font-size:var(--fs-sm);line-height:var(--lh-base);">
+          <strong id="delete-content-title" style="color:var(--neon-pink);"></strong>
+          콘텐츠를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
+        </p>
+      </div>
+      <div class="modal__footer">
+        <button class="btn btn--ghost" onclick="closeDeleteModal()">CANCEL</button>
+        <button class="btn btn--danger" id="confirm-delete-btn" onclick="confirmDelete()">DELETE</button>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ── page-level scripts ── -->
+<th:block th:fragment="pageScripts">
+  <script>
+    /* ── Tab switching & lazy-load ── */
+    const loadedTabs = new Set(['all']);
+
+    function switchTab(name, btn) {
+      document.querySelectorAll('.share-section').forEach(s => s.classList.remove('share-section--active'));
+      document.querySelectorAll('.list-tab').forEach(b => {
+        b.classList.remove('list-tab--active');
+        b.setAttribute('aria-selected', 'false');
+      });
+      document.getElementById('tab-' + name).classList.add('share-section--active');
+      btn.classList.add('list-tab--active');
+      btn.setAttribute('aria-selected', 'true');
+
+      if (name !== 'all' && !loadedTabs.has(name)) {
+        loadedTabs.add(name);
+        fetchByType(name);
+      }
+    }
+
+    /* ── Fetch filtered content ── */
+    async function fetchByType(type) {
+      const grid = document.getElementById('grid-' + type);
+      if (!grid) return;
+      grid.innerHTML = '<p style="padding:var(--sp-4);color:var(--text-muted);font-family:var(--font-mono);font-size:var(--fs-xs);">LOADING...</p>';
+      try {
+        const res = await fetch('/api/share?contentType=' + type);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const items = await res.json();
+        if (items.length === 0) {
+          grid.innerHTML = '<div class="empty-state"><div class="empty-state__title">NO CONTENT</div><p class="empty-state__sub">해당 타입의 공유 콘텐츠가 없습니다.</p></div>';
+          return;
+        }
+        grid.innerHTML = items.map(item => cardHTML(item)).join('');
+      } catch (e) {
+        grid.innerHTML = '<p style="padding:var(--sp-4);color:var(--neon-pink);font-family:var(--font-mono);font-size:var(--fs-xs);">ERROR: ' + e.message + '</p>';
+      }
+    }
+
+    function typeBadgeClass(type) {
+      const map = { RULESET:'type-badge--RULESET', CHARACTER_TEMPLATE:'type-badge--CHARACTER_TEMPLATE', MAP:'type-badge--MAP', MIXED:'type-badge--MIXED' };
+      return map[type] || '';
+    }
+
+    function cardHTML(item) {
+      const date = item.createdAt ? item.createdAt.substring(0,10) : '';
+      return `<div class="share-card" onclick="viewContent(${item.id})">
+        <div class="share-card__header">
+          <div class="share-card__title">${escHtml(item.title)}</div>
+          <span class="type-badge ${typeBadgeClass(item.contentType)}">${item.contentType}</span>
+        </div>
+        <div class="share-card__author">BY ${escHtml(item.authorUsername)}</div>
+        <div class="share-card__stats">
+          <div class="share-stat">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            ${item.downloadCount}
+          </div>
+          <div class="share-stat">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+            </svg>
+            ${item.likeCount}
+          </div>
+          <div class="share-stat" style="margin-left:auto;">${date}</div>
+        </div>
+      </div>`;
+    }
+
+    function escHtml(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    /* ── Navigate to detail ── */
+    function viewContent(id) {
+      window.location.href = '/share/' + id;
+    }
+
+    /* ── Load my content (if logged in) ── */
+    async function loadMyContent() {
+      const container = document.getElementById('my-content-list');
+      if (!container) return;
+      try {
+        const res = await fetch('/api/share/my');
+        if (!res.ok) { container.innerHTML = ''; return; }
+        const items = await res.json();
+        if (items.length === 0) {
+          container.innerHTML = '<div class="empty-state" style="padding:var(--sp-8);"><div class="empty-state__title">NO MY SHARES</div><p class="empty-state__sub">아직 등록한 공유 콘텐츠가 없습니다.</p></div>';
+          return;
+        }
+        container.innerHTML = `
+          <div class="table-wrapper" style="border:none;border-radius:0;">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>제목</th>
+                  <th>타입</th>
+                  <th>다운로드</th>
+                  <th>좋아요</th>
+                  <th>등록일</th>
+                  <th style="text-align:right;">작업</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${items.map((item, idx) => `
+                  <tr>
+                    <td class="text-muted" style="font-family:var(--font-mono);">${idx + 1}</td>
+                    <td><a href="/share/${item.id}" style="color:var(--neon-cyan);font-family:var(--font-display);font-size:var(--fs-sm);letter-spacing:var(--ls-wide);">${escHtml(item.title)}</a></td>
+                    <td><span class="type-badge ${typeBadgeClass(item.contentType)}">${item.contentType}</span></td>
+                    <td style="font-family:var(--font-mono);font-size:var(--fs-xs);">${item.downloadCount}</td>
+                    <td style="font-family:var(--font-mono);font-size:var(--fs-xs);">${item.likeCount}</td>
+                    <td style="font-family:var(--font-mono);font-size:var(--fs-xs);color:var(--text-muted);">${item.createdAt ? item.createdAt.substring(0,10) : ''}</td>
+                    <td>
+                      <div style="display:flex;gap:var(--sp-2);justify-content:flex-end;">
+                        <button type="button" class="btn btn--danger btn--sm"
+                                onclick="openDeleteModal(${item.id}, '${escHtml(item.title)}')">DEL</button>
+                      </div>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>`;
+      } catch (e) {
+        container.innerHTML = '';
+      }
+    }
+
+    /* ── Delete modal ── */
+    let pendingDeleteId = null;
+
+    function openDeleteModal(id, title) {
+      pendingDeleteId = id;
+      document.getElementById('delete-content-title').textContent = title;
+      document.getElementById('delete-modal').classList.add('open');
+    }
+
+    function closeDeleteModal() {
+      pendingDeleteId = null;
+      document.getElementById('delete-modal').classList.remove('open');
+    }
+
+    async function confirmDelete() {
+      if (!pendingDeleteId) return;
+      const btn = document.getElementById('confirm-delete-btn');
+      btn.disabled = true;
+      btn.textContent = '...';
+      try {
+        const res = await fetch('/api/share/' + pendingDeleteId, { method: 'DELETE' });
+        if (!res.ok) throw new Error('삭제 실패 (HTTP ' + res.status + ')');
+        closeDeleteModal();
+        window.location.reload();
+      } catch (e) {
+        btn.disabled = false;
+        btn.textContent = 'DELETE';
+        alert('오류: ' + e.message);
+      }
+    }
+
+    document.getElementById('delete-modal').addEventListener('click', function(e) {
+      if (e.target === this) closeDeleteModal();
+    });
+
+    /* ── Init ── */
+    document.addEventListener('DOMContentLoaded', () => {
+      loadMyContent();
+    });
+  </script>
+</th:block>
+</html>

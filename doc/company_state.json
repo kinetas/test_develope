@@ -1,0 +1,10 @@
+{
+  "status": "active",
+  "teamLimit": 5,
+  "debugLimit": 1,
+  "autoReport": true,
+  "monitoringEnabled": true,
+  "holidayMode": false,
+  "taskCounter": 0,
+  "startedAt": "2026-05-23T21:52:00+09:00"
+}

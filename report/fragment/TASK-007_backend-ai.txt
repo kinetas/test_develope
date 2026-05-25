@@ -1,0 +1,72 @@
+TASK-007: BGM 재생 기능 구현 — 완료 보고서
+================================================
+담당: Backend AI
+완료일: 2026-05-24
+
+## 생성 파일 목록
+
+### 1. 엔티티
+- src/main/java/com/trpg/model/BgmTrack.java
+  - @Entity, @Table("bgm_tracks")
+  - 필드: id(Long), title(String), audioFile(UploadedFile, @OneToOne),
+          owner(User, @ManyToOne), isPublic(boolean), createdAt(LocalDateTime)
+  - @PrePersist로 createdAt 자동 설정
+
+### 2. Repository
+- src/main/java/com/trpg/repository/BgmTrackRepository.java
+  - findByOwner(User): List<BgmTrack>
+  - findByIsPublicTrue(): List<BgmTrack>
+
+### 3. DTO
+- src/main/java/com/trpg/dto/bgm/BgmTrackDTO.java
+  - 응답용: id, title, audioFileId, audioFileName, ownerUsername, isPublic
+- src/main/java/com/trpg/dto/bgm/BgmTrackRequest.java
+  - 요청용: title, audioFileId, isPublic
+
+### 4. Service
+- src/main/java/com/trpg/service/BgmService.java
+  - addTrack(BgmTrackRequest, User): 파일타입 BGM 검증, 소유자 검증 후 등록
+  - deleteTrack(Long, User): 소유자 권한 검증 후 삭제
+  - getMyTracks(User): 내 트랙 목록
+  - getPublicTracks(): 공개 트랙 목록
+
+### 5. Controller
+- src/main/java/com/trpg/controller/BgmController.java
+  - POST   /api/bgm          — 트랙 등록
+  - DELETE /api/bgm/{id}     — 트랙 삭제
+  - GET    /api/bgm/my       — 내 트랙 목록
+  - GET    /api/bgm/public   — 공개 트랙 목록
+  - JWT 인증 기반 (@AuthenticationPrincipal UserDetails)
+
+### 6. Thymeleaf View
+- src/main/resources/templates/bgm-player.html
+  - layout.html 프래그먼트 활용
+  - HTML5 <audio> 기반 플레이어 UI
+  - 재생/정지/정지(stop)/루프 토글 컨트롤
+  - Seek 바 + 볼륨 슬라이더 (사이버펑크 CSS 커스텀)
+  - 비주얼라이저 애니메이션 (재생 중 네온 바 펄싱)
+  - neon-btn, cyberpunk-panel 클래스 적용
+  - MY TRACKS / PUBLIC 탭 전환
+  - 파일 업로드 + 트랙 등록 폼 (TASK-003 /api/files/upload 연동)
+
+### 7. JavaScript
+- src/main/resources/static/js/bgm-player.js
+  - HTML5 Audio API 기반 재생/정지/시크/루프
+  - 볼륨 페이드인/아웃 (300~600ms, 60fps 인터폴레이션) — 사이버펑크 분위기
+  - 트랙 목록 동적 렌더링 (fetch /api/bgm/my, /api/bgm/public)
+  - 파일 업로드 (POST /api/files/upload, fileType=BGM)
+  - 트랙 등록 (POST /api/bgm) / 삭제 (DELETE /api/bgm/{id})
+  - JWT 토큰 localStorage('jwtToken') 기반 인증 헤더 첨부
+  - Seek 바 / 볼륨 슬라이더 CSS gradient 동기화
+
+## 선행 작업 의존성
+- TASK-001: 기반 구조 (SecurityConfig, JwtAuthenticationFilter, User, UserRepository 활용)
+- TASK-003: FileStorageService, UploadedFile, FileType.BGM 활용
+
+## 특이사항
+- BgmService.addTrack에서 FileType.BGM 타입 검증 및 파일 소유자 검증 추가
+- bgm-player.html은 layout.html 프래그먼트를 상속하여 일관된 사이버펑크 UI 유지
+- SecurityConfig PUBLIC_PATHS에 /api/bgm/public은 인증 없이도 조회 가능하도록
+  별도 설정이 필요할 수 있음 (현재는 anyRequest().authenticated() 정책 유지)
+
+STATUS: COMPLETE

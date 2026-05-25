@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="ko"
+      xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: layout(
+          title     = '맵 에디터',
+          sidebar   = null,
+          content   = ~{::content}
+      )}">
+<body>
+
+<!-- ══════════════════════════════════════════════
+     MAP EDITOR — CONTENT FRAGMENT
+     ══════════════════════════════════════════════ -->
+<th:block th:fragment="content">
+
+  <!-- Page header -->
+  <header class="page-header mb-6">
+    <h1 class="page-title glitch-on-hover" data-text="MAP EDITOR">MAP EDITOR</h1>
+    <p class="text-muted text-sm">타일 기반 맵을 제작하고 저장하세요.</p>
+  </header>
+
+  <!-- Editor layout: controls left, canvas right -->
+  <div class="map-editor-layout" style="display:grid;grid-template-columns:260px 1fr;gap:1.5rem;align-items:start;">
+
+    <!-- ── CONTROLS PANEL ── -->
+    <aside class="panel panel--dark" style="padding:1.25rem;display:flex;flex-direction:column;gap:1rem;">
+
+      <!-- Map name -->
+      <div class="form-group">
+        <label class="form-label ls-wider text-xs" for="map-title">MAP NAME</label>
+        <input id="map-title"
+               type="text"
+               class="form-input"
+               placeholder="예: NEON DISTRICT B-7"
+               maxlength="100" />
+      </div>
+
+      <!-- Map size -->
+      <fieldset style="border:1px solid var(--border-dim);padding:.75rem;border-radius:4px;">
+        <legend class="form-label text-xs ls-wider" style="padding:0 .4rem;">MAP SIZE (TILES)</legend>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;">
+          <div class="form-group" style="margin:0;">
+            <label class="form-label text-xs" for="map-width">WIDTH</label>
+            <input id="map-width" type="number" class="form-input" value="20" min="1" max="100" />
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label class="form-label text-xs" for="map-height">HEIGHT</label>
+            <input id="map-height" type="number" class="form-input" value="15" min="1" max="100" />
+          </div>
+        </div>
+        <button class="btn btn--ghost btn--sm" style="width:100%;margin-top:.75rem;" onclick="applyMapSize()">
+          APPLY SIZE
+        </button>
+      </fieldset>
+
+      <!-- Tool palette -->
+      <fieldset style="border:1px solid var(--border-dim);padding:.75rem;border-radius:4px;">
+        <legend class="form-label text-xs ls-wider" style="padding:0 .4rem;">TOOLS</legend>
+        <div style="display:flex;flex-direction:column;gap:.5rem;">
+          <button id="tool-draw"
+                  class="btn btn--primary btn--sm tool-btn tool-btn--active"
+                  data-tool="draw"
+                  onclick="selectTool('draw')">
+            &#9632; DRAW
+          </button>
+          <button id="tool-erase"
+                  class="btn btn--ghost btn--sm tool-btn"
+                  data-tool="erase"
+                  onclick="selectTool('erase')">
+            &#9633; ERASE
+          </button>
+          <button id="tool-move"
+                  class="btn btn--ghost btn--sm tool-btn"
+                  data-tool="move"
+                  onclick="selectTool('move')">
+            &#10021; PAN
+          </button>
+        </div>
+      </fieldset>
+
+      <!-- Draw color / tile picker -->
+      <div class="form-group">
+        <label class="form-label text-xs ls-wider" for="tile-color">TILE COLOR</label>
+        <input id="tile-color" type="color" value="#00f5ff"
+               style="width:100%;height:36px;border:1px solid var(--border-dim);
+                      background:var(--surface-2);border-radius:4px;cursor:pointer;" />
+      </div>
+
+      <!-- Background image upload -->
+      <fieldset style="border:1px solid var(--border-dim);padding:.75rem;border-radius:4px;">
+        <legend class="form-label text-xs ls-wider" style="padding:0 .4rem;">BACKGROUND IMAGE</legend>
+        <input id="bg-file-input" type="file" accept="image/*" style="display:none;"
+               onchange="handleBgUpload(event)" />
+        <button class="btn btn--ghost btn--sm" style="width:100%;"
+                onclick="document.getElementById('bg-file-input').click()">
+          UPLOAD IMAGE
+        </button>
+        <p id="bg-file-name" class="text-xs text-muted" style="margin-top:.4rem;word-break:break-all;">
+          선택된 파일 없음
+        </p>
+        <input id="bg-image-id" type="hidden" value="" />
+      </fieldset>
+
+      <!-- Public toggle -->
+      <div class="form-group" style="display:flex;align-items:center;gap:.75rem;">
+        <input id="map-is-public" type="checkbox"
+               style="width:16px;height:16px;accent-color:var(--neon-cyan);" />
+        <label class="form-label text-xs ls-wider" for="map-is-public" style="margin:0;">
+          PUBLIC MAP
+        </label>
+      </div>
+
+      <!-- Map ID (hidden, set when editing existing) -->
+      <input id="map-id" type="hidden" th:value="${mapId} ?: ''" />
+
+      <!-- Save button -->
+      <button class="btn btn--primary" onclick="saveMap()" style="width:100%;margin-top:.5rem;">
+        SAVE MAP
+      </button>
+
+      <!-- Status message -->
+      <p id="save-status" class="text-xs text-muted" style="text-align:center;"></p>
+
+    </aside>
+    <!-- / controls panel -->
+
+    <!-- ── CANVAS AREA ── -->
+    <section style="display:flex;flex-direction:column;gap:.75rem;">
+
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span class="text-xs text-secondary ls-wider">GRID CANVAS</span>
+        <div style="display:flex;gap:.5rem;">
+          <button class="btn btn--ghost btn--sm" onclick="clearCanvas()">CLEAR</button>
+          <button class="btn btn--ghost btn--sm" onclick="zoomIn()">ZOOM +</button>
+          <button class="btn btn--ghost btn--sm" onclick="zoomOut()">ZOOM -</button>
+        </div>
+      </div>
+
+      <div id="canvas-wrapper"
+           style="overflow:auto;border:1px solid var(--border-dim);border-radius:4px;
+                  background:var(--surface-1);position:relative;max-height:70vh;">
+        <canvas id="map-canvas"
+                style="display:block;cursor:crosshair;image-rendering:pixelated;">
+          캔버스를 지원하지 않는 브라우저입니다.
+        </canvas>
+      </div>
+
+      <p class="text-xs text-muted">
+        좌클릭: 타일 그리기 | 우클릭: 지우기 | 스크롤: 확대·축소
+      </p>
+
+    </section>
+    <!-- / canvas area -->
+
+  </div>
+  <!-- / map-editor-layout -->
+
+</th:block>
+
+<!-- ══════════════════════════════════════════════
+     PAGE SCRIPTS
+     ══════════════════════════════════════════════ -->
+<th:block th:fragment="pageScripts">
+<script th:inline="javascript">
+/* ── MAP EDITOR SCRIPT ── */
+(function () {
+  'use strict';
+
+  /* ── State ── */
+  const state = {
+    cols:       20,
+    rows:       15,
+    tileSize:   32,
+    zoom:       1.0,
+    tool:       'draw',
+    tileColor:  '#00f5ff',
+    isDrawing:  false,
+    tiles:      {},         // key: "col,row" -> color string
+    bgImageId:  null,
+    bgImage:    null,       // HTMLImageElement
+    panOffset:  { x: 0, y: 0 },
+    panStart:   null,
+  };
+
+  const canvas  = document.getElementById('map-canvas');
+  const ctx     = canvas.getContext('2d');
+  const GRID_COLOR  = 'rgba(0, 245, 255, 0.12)';
+  const ERASE_COLOR = '#0a0a0f';
+
+  /* ── Init ── */
+  function init() {
+    applyMapSize();
+    bindEvents();
+  }
+
+  /* ── Resize canvas to match grid ── */
+  function applyMapSize() {
+    const w = parseInt(document.getElementById('map-width').value,  10) || 20;
+    const h = parseInt(document.getElementById('map-height').value, 10) || 15;
+    state.cols = Math.max(1, Math.min(100, w));
+    state.rows = Math.max(1, Math.min(100, h));
+    resizeCanvas();
+    redraw();
+  }
+  window.applyMapSize = applyMapSize;
+
+  function resizeCanvas() {
+    canvas.width  = state.cols * state.tileSize * state.zoom;
+    canvas.height = state.rows * state.tileSize * state.zoom;
+  }
+
+  /* ── Redraw everything ── */
+  function redraw() {
+    const ts = state.tileSize * state.zoom;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    /* Background image */
+    if (state.bgImage) {
+      ctx.drawImage(state.bgImage, 0, 0, canvas.width, canvas.height);
+    } else {
+      ctx.fillStyle = ERASE_COLOR;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    /* Tiles */
+    for (const [key, color] of Object.entries(state.tiles)) {
+      const [c, r] = key.split(',').map(Number);
+      ctx.fillStyle = color + 'cc';  /* slight transparency */
+      ctx.fillRect(c * ts, r * ts, ts, ts);
+    }
+
+    /* Grid lines */
+    ctx.strokeStyle = GRID_COLOR;
+    ctx.lineWidth   = 1;
+    for (let c = 0; c <= state.cols; c++) {
+      ctx.beginPath();
+      ctx.moveTo(c * ts, 0);
+      ctx.lineTo(c * ts, canvas.height);
+      ctx.stroke();
+    }
+    for (let r = 0; r <= state.rows; r++) {
+      ctx.beginPath();
+      ctx.moveTo(0, r * ts);
+      ctx.lineTo(canvas.width, r * ts);
+      ctx.stroke();
+    }
+  }
+
+  /* ── Event binding ── */
+  function bindEvents() {
+    canvas.addEventListener('mousedown',  onMouseDown);
+    canvas.addEventListener('mousemove',  onMouseMove);
+    canvas.addEventListener('mouseup',    onMouseUp);
+    canvas.addEventListener('mouseleave', onMouseUp);
+    canvas.addEventListener('contextmenu', e => e.preventDefault());
+    canvas.addEventListener('wheel', onWheel, { passive: false });
+
+    document.getElementById('tile-color').addEventListener('input', e => {
+      state.tileColor = e.target.value;
+    });
+  }
+
+  function getTile(e) {
+    const rect = canvas.getBoundingClientRect();
+    const ts   = state.tileSize * state.zoom;
+    const x    = e.clientX - rect.left;
+    const y    = e.clientY - rect.top;
+    return {
+      col: Math.floor(x / ts),
+      row: Math.floor(y / ts),
+    };
+  }
+
+  function paintTile(e) {
+    const { col, row } = getTile(e);
+    if (col < 0 || col >= state.cols || row < 0 || row >= state.rows) return;
+    const key = col + ',' + row;
+    if (state.tool === 'draw' || e.button === 0) {
+      if (e.button === 2) {
+        delete state.tiles[key];
+      } else {
+        state.tiles[key] = state.tileColor;
+      }
+    } else if (state.tool === 'erase') {
+      delete state.tiles[key];
+    }
+    redraw();
+  }
+
+  function onMouseDown(e) {
+    if (state.tool === 'move') {
+      state.isDrawing = false;
+      state.panStart = { x: e.clientX, y: e.clientY };
+      canvas.style.cursor = 'grabbing';
+      return;
+    }
+    state.isDrawing = true;
+    paintTile(e);
+  }
+
+  function onMouseMove(e) {
+    if (state.tool === 'move' && state.panStart) {
+      const wrapper = document.getElementById('canvas-wrapper');
+      wrapper.scrollLeft -= (e.clientX - state.panStart.x);
+      wrapper.scrollTop  -= (e.clientY - state.panStart.y);
+      state.panStart = { x: e.clientX, y: e.clientY };
+      return;
+    }
+    if (!state.isDrawing) return;
+    paintTile(e);
+  }
+
+  function onMouseUp() {
+    state.isDrawing = false;
+    state.panStart  = null;
+    if (state.tool === 'move') canvas.style.cursor = 'grab';
+  }
+
+  function onWheel(e) {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? -0.1 : 0.1;
+    state.zoom = Math.max(0.3, Math.min(4.0, state.zoom + delta));
+    resizeCanvas();
+    redraw();
+  }
+
+  /* ── Tool selection ── */
+  window.selectTool = function (tool) {
+    state.tool = tool;
+    document.querySelectorAll('.tool-btn').forEach(btn => {
+      btn.classList.toggle('tool-btn--active', btn.dataset.tool === tool);
+      btn.classList.toggle('btn--primary',     btn.dataset.tool === tool);
+      btn.classList.toggle('btn--ghost',       btn.dataset.tool !== tool);
+    });
+    canvas.style.cursor = tool === 'move' ? 'grab' : 'crosshair';
+  };
+
+  /* ── Zoom controls ── */
+  window.zoomIn  = function () { state.zoom = Math.min(4.0, state.zoom + 0.2); resizeCanvas(); redraw(); };
+  window.zoomOut = function () { state.zoom = Math.max(0.3, state.zoom - 0.2); resizeCanvas(); redraw(); };
+
+  /* ── Clear canvas ── */
+  window.clearCanvas = function () {
+    if (!confirm('캔버스의 모든 타일을 지울까요?')) return;
+    state.tiles = {};
+    redraw();
+  };
+
+  /* ── Background image upload (TASK-003 API) ── */
+  window.handleBgUpload = async function (event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    document.getElementById('bg-file-name').textContent = file.name;
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('fileType', 'IMAGE');
+
+    try {
+      const resp = await fetch('/api/files/upload', {
+        method: 'POST',
+        body: formData,
+        headers: { 'Authorization': 'Bearer ' + getJwt() },
+      });
+      if (!resp.ok) throw new Error('업로드 실패: ' + resp.status);
+      const data = await resp.json();
+      state.bgImageId = data.fileId;
+      document.getElementById('bg-image-id').value = data.fileId;
+
+      /* Preview on canvas */
+      const img = new Image();
+      img.onload = () => { state.bgImage = img; redraw(); };
+      img.src = URL.createObjectURL(file);
+
+      showStatus('배경 이미지 업로드 완료 (id=' + data.fileId + ')', false);
+    } catch (err) {
+      showStatus('업로드 오류: ' + err.message, true);
+    }
+  };
+
+  /* ── Save map ── */
+  window.saveMap = async function () {
+    const title = document.getElementById('map-title').value.trim();
+    if (!title) { showStatus('맵 이름을 입력하세요.', true); return; }
+
+    const payload = {
+      title:             title,
+      mapData:           JSON.stringify({ tiles: state.tiles }),
+      backgroundImageId: state.bgImageId || null,
+      width:             state.cols,
+      height:            state.rows,
+      isPublic:          document.getElementById('map-is-public').checked,
+    };
+
+    const mapId  = document.getElementById('map-id').value;
+    const url    = mapId ? '/api/maps/' + mapId : '/api/maps';
+    const method = mapId ? 'PUT' : 'POST';
+
+    try {
+      const resp = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type':  'application/json',
+          'Authorization': 'Bearer ' + getJwt(),
+        },
+        body: JSON.stringify(payload),
+      });
+      if (!resp.ok) {
+        const err = await resp.json();
+        throw new Error(err.error || resp.statusText);
+      }
+      const data = await resp.json();
+      document.getElementById('map-id').value = data.id;
+      showStatus('저장 완료! (id=' + data.id + ')', false);
+    } catch (err) {
+      showStatus('저장 오류: ' + err.message, true);
+    }
+  };
+
+  /* ── Helpers ── */
+  function showStatus(msg, isError) {
+    const el = document.getElementById('save-status');
+    el.textContent  = msg;
+    el.style.color  = isError ? 'var(--neon-red, #ff4466)' : 'var(--neon-green, #00ff88)';
+  }
+
+  function getJwt() {
+    return localStorage.getItem('jwt') || sessionStorage.getItem('jwt') || '';
+  }
+
+  /* ── Bootstrap ── */
+  document.addEventListener('DOMContentLoaded', init);
+
+  /* ── Expose applyMapSize for inline onclick ── */
+  window.applyMapSize = applyMapSize;
+
+}());
+</script>
+
+<style>
+  .tool-btn--active { box-shadow: 0 0 8px var(--neon-cyan, #00f5ff); }
+  .map-editor-layout canvas { user-select: none; }
+</style>
+</th:block>
+
+</body>
+</html>

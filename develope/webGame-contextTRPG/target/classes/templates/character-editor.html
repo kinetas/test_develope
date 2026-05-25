@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="ko"
+      xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: layout(
+          title   = ${editMode} ? '시트 편집' : '새 캐릭터',
+          sidebar = null,
+          content = ~{::main-content}
+      )}">
+
+<!-- ── page-level styles ── -->
+<th:block th:fragment="pageStyles">
+  <style>
+    /* ── character editor extras ── */
+    .editor-grid {
+      display: grid;
+      grid-template-columns: 1fr 420px;
+      gap: var(--sp-8);
+      align-items: start;
+    }
+
+    @media (max-width: 1100px) {
+      .editor-grid { grid-template-columns: 1fr; }
+    }
+
+    /* JSON editor wrapper */
+    .json-editor-wrapper {
+      position: relative;
+      background-color: var(--bg-void);
+      border: 1px solid var(--border-default);
+      border-bottom: 2px solid var(--neon-cyan-dim);
+      border-radius: var(--radius-base);
+      overflow: hidden;
+      transition: border-color var(--transition-base), box-shadow var(--transition-base);
+    }
+
+    .json-editor-wrapper:focus-within {
+      border-color: var(--neon-cyan);
+      border-bottom-color: var(--neon-cyan);
+      box-shadow: 0 0 0 1px rgba(0, 245, 255, 0.2), 0 0 12px rgba(0, 245, 255, 0.08);
+    }
+
+    .json-editor-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--sp-2) var(--sp-4);
+      background-color: var(--bg-elevated);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .json-editor-toolbar__label {
+      font-family: var(--font-display);
+      font-size: var(--fs-xs);
+      letter-spacing: var(--ls-widest);
+      text-transform: uppercase;
+      color: var(--neon-cyan-dim);
+    }
+
+    .json-editor-toolbar__actions {
+      display: flex;
+      gap: var(--sp-2);
+    }
+
+    #sheet-data-editor {
+      width: 100%;
+      min-height: 400px;
+      padding: var(--sp-4);
+      font-family: var(--font-mono);
+      font-size: var(--fs-sm);
+      line-height: 1.7;
+      color: var(--neon-green);
+      background-color: var(--bg-void);
+      border: none;
+      resize: vertical;
+      outline: none;
+      tab-size: 2;
+    }
+
+    /* visibility toggle */
+    .toggle-group {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-4);
+      padding: var(--sp-3) var(--sp-4);
+      background-color: var(--bg-elevated);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-base);
+    }
+
+    .toggle-switch {
+      position: relative;
+      width: 44px;
+      height: 22px;
+      flex-shrink: 0;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+      position: absolute;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      inset: 0;
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-default);
+      border-radius: 22px;
+      cursor: pointer;
+      transition: background-color var(--transition-base), border-color var(--transition-base);
+    }
+
+    .toggle-slider::before {
+      content: '';
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      left: 3px;
+      top: 3px;
+      background-color: var(--text-muted);
+      border-radius: 50%;
+      transition: transform var(--transition-base), background-color var(--transition-base);
+    }
+
+    .toggle-switch input:checked + .toggle-slider {
+      background-color: rgba(0, 245, 255, 0.15);
+      border-color: var(--neon-cyan);
+    }
+
+    .toggle-switch input:checked + .toggle-slider::before {
+      transform: translateX(22px);
+      background-color: var(--neon-cyan);
+      box-shadow: var(--glow-soft);
+    }
+
+    .toggle-label {
+      font-family: var(--font-display);
+      font-size: var(--fs-xs);
+      letter-spacing: var(--ls-wide);
+      text-transform: uppercase;
+      color: var(--text-secondary);
+    }
+
+    /* file link section */
+    .file-link-panel {
+      background-color: var(--bg-elevated);
+      border: 1px solid var(--border-default);
+      border-left: 3px solid var(--neon-purple-dim);
+      border-radius: var(--radius-base);
+      padding: var(--sp-4) var(--sp-5);
+    }
+
+    .file-link-panel__header {
+      font-family: var(--font-display);
+      font-size: var(--fs-xs);
+      letter-spacing: var(--ls-widest);
+      text-transform: uppercase;
+      color: var(--neon-purple);
+      margin-bottom: var(--sp-3);
+    }
+
+    .linked-file-info {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-3);
+      padding: var(--sp-2) var(--sp-3);
+      background-color: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      font-size: var(--fs-xs);
+      color: var(--text-secondary);
+      margin-top: var(--sp-2);
+    }
+
+    .linked-file-info__name {
+      flex: 1;
+      font-family: var(--font-mono);
+      color: var(--neon-purple);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* status bar */
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: var(--sp-4);
+      padding: var(--sp-3) var(--sp-5);
+      background-color: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-base);
+      font-size: var(--fs-xs);
+      color: var(--text-muted);
+      letter-spacing: var(--ls-wide);
+      font-family: var(--font-mono);
+    }
+
+    .status-bar__dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background-color: var(--neon-green);
+      box-shadow: 0 0 6px var(--neon-green);
+    }
+
+    .status-bar__dot--error {
+      background-color: var(--neon-pink);
+      box-shadow: 0 0 6px var(--neon-pink);
+    }
+
+    /* save feedback */
+    #save-status {
+      font-family: var(--font-mono);
+      font-size: var(--fs-xs);
+      color: var(--neon-green);
+      letter-spacing: var(--ls-wide);
+      opacity: 0;
+      transition: opacity var(--transition-base);
+    }
+
+    #save-status.visible { opacity: 1; }
+    #save-status.error   { color: var(--neon-pink); }
+  </style>
+</th:block>
+
+<!-- ══════════════════════════════════════
+     PAGE CONTENT
+     ══════════════════════════════════════ -->
+<main th:fragment="main-content">
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <div>
+      <h1 class="page-header__title"
+          th:text="${editMode} ? 'EDIT CHARACTER' : 'NEW CHARACTER'">NEW CHARACTER</h1>
+      <p class="page-header__subtitle"
+         th:text="${editMode} ? '캐릭터 시트 데이터를 수정합니다' : '새 캐릭터 시트를 작성합니다'">
+        새 캐릭터 시트를 작성합니다
+      </p>
+    </div>
+    <div class="flex flex--center flex--gap-sm">
+      <a class="btn btn--ghost btn--sm" th:href="@{/characters}">
+        &lt; BACK
+      </a>
+    </div>
+  </div>
+
+  <!-- Error / success flash (injected by layout) -->
+
+  <form id="character-form"
+        th:action="${editMode} ? @{/api/characters/{id}(id=${sheet.id})} : @{/api/characters}"
+        method="post"
+        onsubmit="return handleSubmit(event)">
+
+    <div class="editor-grid">
+
+      <!-- ── LEFT COLUMN: main fields ── -->
+      <div class="flex flex--col" style="gap: var(--sp-6);">
+
+        <!-- Character Name -->
+        <div class="card card--flat">
+          <div class="card__header">
+            <span class="card__title">캐릭터 정보</span>
+          </div>
+          <div class="card__body">
+            <div class="form-group">
+              <label class="form-label form-label--required" for="char-name">
+                CHARACTER NAME
+              </label>
+              <input
+                id="char-name"
+                name="name"
+                type="text"
+                class="form-input"
+                placeholder="e.g. Ghost-7 // Reaper Neon // V"
+                maxlength="100"
+                required
+                th:value="${sheet?.name}"
+                autocomplete="off" />
+              <span class="form-hint">최대 100자. 캐릭터 고유 콜사인이나 본명을 입력하세요.</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- JSON Sheet Data Editor -->
+        <div class="card card--flat">
+          <div class="card__header">
+            <span class="card__title">SHEET DATA</span>
+            <span class="badge badge--green" id="json-valid-badge">JSON VALID</span>
+          </div>
+          <div class="card__body" style="padding: 0;">
+            <!-- Toolbar -->
+            <div class="json-editor-toolbar">
+              <span class="json-editor-toolbar__label">JSON — 자유 스탯/상태 데이터</span>
+              <div class="json-editor-toolbar__actions">
+                <button type="button" class="btn btn--ghost btn--sm" onclick="formatJSON()">
+                  FORMAT
+                </button>
+                <button type="button" class="btn btn--ghost btn--sm" onclick="clearEditor()">
+                  CLEAR
+                </button>
+              </div>
+            </div>
+            <!-- Editor area — id="sheet-data-editor" reserved for CodeMirror integration -->
+            <div class="json-editor-wrapper">
+              <textarea
+                id="sheet-data-editor"
+                name="sheetData"
+                spellcheck="false"
+                placeholder='{
+  "stats": {
+    "str": 10,
+    "dex": 14,
+    "int": 16
+  },
+  "hp": { "current": 40, "max": 40 },
+  "skills": ["Hacking", "Stealth"]
+}'
+                oninput="validateJSON(this)"
+                th:text="${sheet?.sheetData}"
+              ></textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- Status bar -->
+        <div class="status-bar">
+          <span class="status-bar__dot" id="json-status-dot"></span>
+          <span id="json-status-text">JSON 상태: 유효</span>
+          <span style="margin-left: auto;" id="char-count">0 chars</span>
+        </div>
+
+      </div>
+      <!-- / left column -->
+
+      <!-- ── RIGHT COLUMN: options ── -->
+      <div class="flex flex--col" style="gap: var(--sp-5);">
+
+        <!-- Visibility toggle -->
+        <div class="card card--flat">
+          <div class="card__header">
+            <span class="card__title">공개 설정</span>
+          </div>
+          <div class="card__body">
+            <div class="toggle-group">
+              <label class="toggle-switch" for="is-public">
+                <input
+                  type="checkbox"
+                  id="is-public"
+                  name="isPublic"
+                  value="true"
+                  th:checked="${sheet?.public}"
+                  onchange="updateVisibilityLabel(this)" />
+                <span class="toggle-slider"></span>
+              </label>
+              <div>
+                <div class="toggle-label" id="visibility-label">비공개</div>
+                <div class="form-hint" style="margin-top: var(--sp-1);">
+                  공개 시 다른 러너들이 열람할 수 있습니다.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- File Link -->
+        <div class="card card--flat">
+          <div class="card__header">
+            <span class="card__title">파일 연결</span>
+            <span class="badge badge--purple">OPTIONAL</span>
+          </div>
+          <div class="card__body">
+            <div class="file-link-panel">
+              <div class="file-link-panel__header">
+                Excel / Script 파일 연결
+              </div>
+              <p class="form-hint" style="margin-bottom: var(--sp-3);">
+                업로드된 Excel 또는 스크립트 파일을 이 시트에 연결할 수 있습니다.
+              </p>
+
+              <!-- Upload new file -->
+              <div class="form-group" style="margin-bottom: var(--sp-3);">
+                <label class="form-label" for="file-upload-input">파일 업로드</label>
+                <input
+                  type="file"
+                  id="file-upload-input"
+                  accept=".xlsx,.xls,.csv,.js,.ts,.json,.py"
+                  class="form-input"
+                  onchange="uploadFile(this)" />
+              </div>
+
+              <!-- Currently linked file indicator -->
+              <div id="linked-file-display"
+                   th:class="${sheet?.linkedFileId != null} ? 'linked-file-info' : 'linked-file-info'"
+                   th:style="${sheet?.linkedFileId == null} ? 'display:none' : ''">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="2" aria-hidden="true" style="color:var(--neon-purple);flex-shrink:0;">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                </svg>
+                <span class="linked-file-info__name" id="linked-file-name">
+                  <th:block th:text="${sheet?.linkedFileId != null} ? 'File #' + ${sheet.linkedFileId} : ''"/>
+                </span>
+                <button type="button" class="btn btn--ghost btn--sm" onclick="clearLinkedFile()" title="연결 해제">
+                  ×
+                </button>
+              </div>
+
+              <!-- Hidden field to carry linkedFileId -->
+              <input type="hidden" id="linked-file-id" name="linkedFileId"
+                     th:value="${sheet?.linkedFileId}" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Save actions -->
+        <div class="card card--flat">
+          <div class="card__body" style="display:flex;flex-direction:column;gap:var(--sp-3);">
+            <button type="submit" class="btn btn--primary btn--lg" id="save-btn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="2" aria-hidden="true">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                <polyline points="17 21 17 13 7 13 7 21"/>
+                <polyline points="7 3 7 8 15 8"/>
+              </svg>
+              SAVE SHEET
+            </button>
+            <a th:href="@{/characters}" class="btn btn--ghost">
+              CANCEL
+            </a>
+            <div id="save-status" aria-live="polite"></div>
+          </div>
+        </div>
+
+        <!-- Metadata (edit mode only) -->
+        <div th:if="${editMode and sheet != null}" class="card card--flat" style="opacity:0.6;">
+          <div class="card__body">
+            <div class="flex flex--col" style="gap:var(--sp-2);">
+              <div class="flex flex--between">
+                <span class="form-hint">생성일</span>
+                <span class="form-hint text-secondary" th:text="${#temporals.format(sheet.createdAt,'yyyy-MM-dd HH:mm')}">—</span>
+              </div>
+              <div class="flex flex--between">
+                <span class="form-hint">수정일</span>
+                <span class="form-hint text-secondary" th:text="${#temporals.format(sheet.updatedAt,'yyyy-MM-dd HH:mm')}">—</span>
+              </div>
+              <div class="flex flex--between">
+                <span class="form-hint">소유자</span>
+                <span class="form-hint text-secondary" th:text="${sheet.ownerUsername}">—</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+      <!-- / right column -->
+
+    </div>
+    <!-- / editor-grid -->
+
+  </form>
+
+</main>
+
+<!-- ── page-level scripts ── -->
+<th:block th:fragment="pageScripts">
+  <script th:inline="javascript">
+    /* ── Globals ── */
+    const EDIT_MODE   = /*[[${editMode}]]*/ false;
+    const SHEET_ID    = /*[[${sheet?.id}]]*/ null;
+    const API_BASE    = '/api/characters';
+
+    /* ── DOM ready ── */
+    document.addEventListener('DOMContentLoaded', () => {
+      const editor = document.getElementById('sheet-data-editor');
+      if (editor) {
+        validateJSON(editor);
+        updateCharCount(editor.value);
+        editor.addEventListener('input', () => updateCharCount(editor.value));
+      }
+      const isPublicCb = document.getElementById('is-public');
+      if (isPublicCb) updateVisibilityLabel(isPublicCb);
+    });
+
+    /* ── JSON validation ── */
+    function validateJSON(textarea) {
+      const badge = document.getElementById('json-valid-badge');
+      const dot   = document.getElementById('json-status-dot');
+      const text  = document.getElementById('json-status-text');
+      const val   = textarea.value.trim();
+
+      if (!val) {
+        badge.className = 'badge badge--gray';
+        badge.textContent = 'EMPTY';
+        dot.className   = 'status-bar__dot';
+        text.textContent = 'JSON 상태: 비어 있음';
+        return true;
+      }
+      try {
+        JSON.parse(val);
+        badge.className  = 'badge badge--green';
+        badge.textContent = 'JSON VALID';
+        dot.className    = 'status-bar__dot';
+        dot.style.backgroundColor = 'var(--neon-green)';
+        dot.style.boxShadow = '0 0 6px var(--neon-green)';
+        text.textContent  = 'JSON 상태: 유효';
+        return true;
+      } catch (e) {
+        badge.className  = 'badge badge--pink';
+        badge.textContent = 'JSON ERROR';
+        dot.className    = 'status-bar__dot status-bar__dot--error';
+        dot.style.backgroundColor = 'var(--neon-pink)';
+        dot.style.boxShadow = '0 0 6px var(--neon-pink)';
+        text.textContent  = 'JSON 오류: ' + e.message;
+        return false;
+      }
+    }
+
+    function updateCharCount(val) {
+      const el = document.getElementById('char-count');
+      if (el) el.textContent = val.length + ' chars';
+    }
+
+    /* ── JSON format ── */
+    function formatJSON() {
+      const editor = document.getElementById('sheet-data-editor');
+      if (!editor) return;
+      try {
+        const parsed = JSON.parse(editor.value);
+        editor.value = JSON.stringify(parsed, null, 2);
+        validateJSON(editor);
+        updateCharCount(editor.value);
+      } catch (e) {
+        showStatus('JSON 파싱 오류: ' + e.message, true);
+      }
+    }
+
+    function clearEditor() {
+      const editor = document.getElementById('sheet-data-editor');
+      if (editor && confirm('JSON 내용을 초기화하시겠습니까?')) {
+        editor.value = '';
+        validateJSON(editor);
+        updateCharCount('');
+      }
+    }
+
+    /* ── Visibility toggle ── */
+    function updateVisibilityLabel(cb) {
+      const label = document.getElementById('visibility-label');
+      if (label) label.textContent = cb.checked ? '공개' : '비공개';
+    }
+
+    /* ── File upload ── */
+    async function uploadFile(input) {
+      if (!input.files || input.files.length === 0) return;
+      const file = input.files[0];
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('fileType', detectFileType(file.name));
+
+      try {
+        showStatus('파일 업로드 중...', false);
+        const resp = await fetch('/api/files/upload', { method: 'POST', body: formData });
+        if (!resp.ok) throw new Error('파일 업로드 실패 (HTTP ' + resp.status + ')');
+        const data = await resp.json();
+        document.getElementById('linked-file-id').value = data.fileId;
+        document.getElementById('linked-file-name').textContent = data.originalName;
+        document.getElementById('linked-file-display').style.display = 'flex';
+        showStatus('파일 연결 완료: ' + data.originalName, false);
+      } catch (e) {
+        showStatus(e.message, true);
+      }
+    }
+
+    function detectFileType(filename) {
+      const ext = filename.split('.').pop().toLowerCase();
+      if (['xlsx','xls'].includes(ext)) return 'EXCEL';
+      if (['js','ts'].includes(ext))    return 'SCRIPT';
+      if (ext === 'json')               return 'JSON';
+      if (ext === 'csv')                return 'CSV';
+      return 'OTHER';
+    }
+
+    function clearLinkedFile() {
+      document.getElementById('linked-file-id').value = '';
+      document.getElementById('linked-file-display').style.display = 'none';
+      document.getElementById('file-upload-input').value = '';
+      showStatus('파일 연결이 해제되었습니다.', false);
+    }
+
+    /* ── Form submit (REST API call) ── */
+    async function handleSubmit(event) {
+      event.preventDefault();
+      const editor = document.getElementById('sheet-data-editor');
+      if (!validateJSON(editor)) {
+        showStatus('JSON 형식이 올바르지 않습니다. 수정 후 다시 시도하세요.', true);
+        return false;
+      }
+
+      const payload = {
+        name:         document.getElementById('char-name').value,
+        sheetData:    editor.value,
+        linkedFileId: document.getElementById('linked-file-id').value || null,
+        isPublic:     document.getElementById('is-public').checked
+      };
+
+      const url    = EDIT_MODE ? API_BASE + '/' + SHEET_ID : API_BASE;
+      const method = EDIT_MODE ? 'PUT' : 'POST';
+
+      const saveBtn = document.getElementById('save-btn');
+      saveBtn.disabled = true;
+      showStatus('저장 중...', false);
+
+      try {
+        const resp = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!resp.ok) {
+          const err = await resp.text();
+          throw new Error('저장 실패: ' + err);
+        }
+        const data = await resp.json();
+        showStatus('저장 완료!', false);
+        setTimeout(() => { window.location.href = '/characters'; }, 800);
+      } catch (e) {
+        showStatus(e.message, true);
+        saveBtn.disabled = false;
+      }
+      return false;
+    }
+
+    /* ── Status helper ── */
+    function showStatus(msg, isError) {
+      const el = document.getElementById('save-status');
+      el.textContent  = msg;
+      el.className    = isError ? 'error visible' : 'visible';
+      if (!isError) {
+        setTimeout(() => { el.classList.remove('visible'); }, 3000);
+      }
+    }
+  </script>
+</th:block>
+</html>
